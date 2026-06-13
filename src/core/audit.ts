@@ -21,7 +21,11 @@ interface Row {
   reversible: number;
   status: string;
   cost: number | null;
+  user_id: string | null;
 }
+
+/** Legacy tenant: rows written before multi-user (user_id IS NULL) belong here. */
+const OWNER = "owner";
 
 export class AuditLog {
   constructor(private db: DB) {}
@@ -34,6 +38,7 @@ export class AuditLog {
     reversible: boolean;
     status: AuditEntry["status"];
     costEstimate?: number;
+    userId?: string;
   }): AuditEntry {
     const row: AuditEntry = {
       id: randomUUID(),
@@ -48,8 +53,8 @@ export class AuditLog {
     };
     this.db
       .prepare(
-        `INSERT INTO audit (id, ts, actor, action, detail, sensitivity, reversible, status, cost)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO audit (id, ts, actor, action, detail, sensitivity, reversible, status, cost, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         row.id,
@@ -61,14 +66,18 @@ export class AuditLog {
         row.reversible ? 1 : 0,
         row.status,
         row.costEstimate ?? null,
+        entry.userId ?? OWNER,
       );
     return row;
   }
 
-  recent(limit = 25): AuditEntry[] {
+  /** Recent actions for one tenant (NULL rows count as the legacy owner). */
+  recent(limit = 25, userId: string = OWNER): AuditEntry[] {
     const rows = this.db
-      .prepare("SELECT * FROM audit ORDER BY ts DESC LIMIT ?")
-      .all(limit) as unknown as Row[];
+      .prepare(
+        "SELECT * FROM audit WHERE (user_id = ? OR (user_id IS NULL AND ? = ?)) ORDER BY ts DESC LIMIT ?",
+      )
+      .all(userId, userId, OWNER, limit) as unknown as Row[];
     return rows.map((r) => ({
       id: r.id,
       ts: r.ts,

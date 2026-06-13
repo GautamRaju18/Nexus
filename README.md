@@ -74,6 +74,35 @@ Slash commands:
 
 ---
 
+## Web cockpit (multi-user)
+
+The graphical cockpit runs a local server bound to `127.0.0.1` only:
+
+```bash
+npm run web        # → http://127.0.0.1:4321
+```
+
+It is **login-gated and multi-user**. Accounts are **pre-seeded** from a small CLI
+(there is no public sign-up); each user gets their own **persistent, isolated** chat
+history, long-term memory, reminders, files, and tool data (job profile, finance).
+Conversations survive a tab refresh *and* a server restart — they live in the local
+SQLite DB, not in memory.
+
+```bash
+npm run user -- add alice      # create a login (prompts for a password, stored scrypt-hashed)
+npm run user -- list           # list accounts
+npm run user -- remove alice   # delete an account (and its sessions)
+```
+
+Passwords are scrypt-hashed; sessions are opaque tokens in an HttpOnly cookie (30-day
+expiry). One user can never see another's transcripts or data.
+
+> **Shared by design:** the Google connection (Gmail/Calendar) and the autonomy/kill
+> safety dials are a single owner-level setting, not per-user. The CLI and Telegram
+> surfaces run as the fixed `owner` tenant.
+
+---
+
 ## Architecture (v1)
 
 ```

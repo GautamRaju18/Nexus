@@ -60,6 +60,14 @@ async function main(): Promise<void> {
   const approver = new CliApprover(rl);
   const orch = rt.buildOrchestrator(approver);
 
+  // Proactive nudges: when a reminder comes due, surface it right in the terminal.
+  // The CLI is the single "owner" tenant, so only deliver owner reminders.
+  rt.startScheduler((r) => {
+    const when = r.recurrence ? c.dim(` (repeats ${r.recurrence})`) : "";
+    console.log(`\n${c.yellow("⏰ Reminder")} ${r.text}${when}`);
+    rl.prompt?.();
+  }, "owner");
+
   console.log(c.bold("\n  JARVIS") + c.dim("  — your local AI Chief of Staff"));
   console.log(c.dim(`  brain: ${rt.llm.name}   memories: ${rt.memory.count()}   agents: ${AGENTS.length}`));
   if (rt.policy.isKilled()) console.log(c.red("  ⚠ kill switch is ENGAGED — outward actions are paused (/kill to release)"));

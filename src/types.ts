@@ -31,16 +31,66 @@ export type ToolSensitivity =
 export interface ToolContext {
   /** The agent invoking the tool. */
   agentId: string;
-  /** Shared services the tool may use. */
+  /** The tenant (web user) this action runs for; "owner" for CLI/Telegram. */
+  userId: string;
+  /** Shared services the tool may use (already scoped to userId). */
   services: ToolServices;
 }
 
-// Forward-declared services a tool can reach (kept loose to avoid import cycles).
+// Narrow service interfaces so a tool sees the SAME shape whether it's handed the raw
+// global store or a per-user-scoped facade (see bootstrap.ts `scope()`). The concrete
+// MemoryStore / Vault / KeyValue / ReminderStore all satisfy these structurally.
+export interface MemoryService {
+  remember(input: {
+    layer: MemoryLayer;
+    key: string;
+    content: string;
+    source: string;
+    confidence?: number;
+    pinned?: boolean;
+  }): Promise<string>;
+  recall(query: string, k?: number, minScore?: number): Promise<MemoryRecord[]>;
+  list(layer?: MemoryLayer): MemoryRecord[];
+  count(): number;
+}
+export interface ReminderService {
+  add(p: {
+    text: string;
+    dueAt: number;
+    recurrence?: import("./core/reminders").Recurrence | null;
+    agent?: string;
+  }): import("./core/reminders").Reminder;
+  list(opts?: {
+    status?: import("./core/reminders").ReminderStatus | "all";
+    limit?: number;
+  }): import("./core/reminders").Reminder[];
+  cancel(id: string): boolean;
+}
+/** A get/set secret store (the encrypted vault, or a per-user-prefixed view of it). */
+export interface SecretStore {
+  get(key: string): string | null;
+  set(key: string, value: string): void;
+  has(key: string): boolean;
+  delete(key: string): void;
+  list(): string[];
+}
+/** A simple key/value store (the kv table, or a per-user-prefixed view of it). */
+export interface KvStore {
+  get(key: string): string | null;
+  set(key: string, value: string): void;
+  getBool(key: string, fallback?: boolean): boolean;
+  setBool(key: string, value: boolean): void;
+}
+
+// Forward-declared services a tool can reach. In multi-user mode these are scoped to the
+// acting user's tenant, so a tool never has to know about userId — it just reads/writes
+// and isolation happens underneath.
 export interface ToolServices {
-  memory: import("./core/memory").MemoryStore;
-  vault: import("./core/security/vault").Vault;
-  kv: import("./core/db").KeyValue;
+  memory: MemoryService;
+  vault: SecretStore;
+  kv: KvStore;
   google: import("./core/google/auth").GoogleAuth;
+  reminders: ReminderService;
   log: (msg: string) => void;
 }
 
@@ -142,6 +192,8 @@ export interface AuditEntry {
 // ── Approvals ───────────────────────────────────────────────────────────────
 export interface ApprovalRequest {
   agentId: string;
+  /** The tenant (web user) this approval belongs to, so the surface routes it correctly. */
+  userId: string;
   toolId: string;
   sensitivity: ToolSensitivity;
   /** A human-readable preview of EXACTLY what is about to happen. */

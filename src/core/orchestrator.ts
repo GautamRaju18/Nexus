@@ -10,7 +10,13 @@
 
 import { runAgent, type AgentDeps } from "./agent";
 import { AGENTS_BY_ID, ROUTABLE_AGENTS } from "../agents/specs";
-import type { AgentSpec, LLMMessage } from "../types";
+import type { AgentSpec, LLMMessage, ToolServices } from "../types";
+
+/** Per-call tenant scoping: which user this request acts for, and their scoped services. */
+interface Scope {
+  userId?: string;
+  services?: ToolServices;
+}
 
 interface PlanStep {
   agent: string;
@@ -22,6 +28,16 @@ type Route = { mode: "chat" } | { mode: "delegate"; plan: PlanStep[]; batch?: bo
 export class Orchestrator {
   constructor(private deps: AgentDeps) {}
 
+  /** Resolve the per-call AgentDeps: the base deps, overlaid with this request's tenant. */
+  private depsFor(scope: Scope): AgentDeps {
+    if (!scope.services && !scope.userId) return this.deps;
+    return {
+      ...this.deps,
+      services: scope.services ?? this.deps.services,
+      userId: scope.userId ?? this.deps.userId,
+    };
+  }
+
   async handle(
     outcome: string,
     opts: {
@@ -31,8 +47,12 @@ export class Orchestrator {
       onAgent?: (agentId: string, active: boolean) => void;
       /** Fired when one agent communicates with another — drives the A2A viz. */
       onA2A?: (from: string, to: string, msg: string) => void;
+      /** Tenant this request acts for (web user); defaults to the owner tenant. */
+      userId?: string;
+      services?: ToolServices;
     } = {},
   ): Promise<string> {
+    const deps = this.depsFor(opts);
     const history = opts.history ?? [];
     const progress = opts.onProgress ?? (() => {});
     const onAgent = opts.onAgent ?? (() => {});
@@ -46,7 +66,7 @@ export class Orchestrator {
 
       if (route.mode === "chat") {
         progress("Chief of Staff is answering directly…");
-        return await this.chatAnswer(outcome, history);
+        return await this.chatAnswer(outcome, history, deps);
       }
 
       progress(
@@ -66,7 +86,7 @@ export class Orchestrator {
         onA2A(prevAgent ?? "chief-of-staff", spec.id, step.task);
         onAgent(spec.id, true);
         try {
-          const res = await runAgent(spec, step.task, this.deps, sharedContext, history);
+          const res = await runAgent(spec, step.task, deps, sharedContext, history);
           results.push({ agent: spec, output: res.message });
           sharedContext += `\n\n[${spec.name}] reported:\n${res.message}`;
           onA2A(spec.id, "chief-of-staff", res.message); // reports back
@@ -76,7 +96,7 @@ export class Orchestrator {
         prevAgent = spec.id;
       }
 
-      if (results.length === 0) return await this.chatAnswer(outcome, history);
+      if (results.length === 0) return await this.chatAnswer(outcome, history, deps);
       if (results.length === 1) return `**${results[0]!.agent.name}:** ${results[0]!.output}`;
 
       // A try-all batch → show each agent's own reply. A real collaboration → synthesize.
@@ -101,15 +121,18 @@ export class Orchestrator {
       history?: LLMMessage[];
       onProgress?: (msg: string) => void;
       onAgent?: (agentId: string, active: boolean) => void;
+      userId?: string;
+      services?: ToolServices;
     } = {},
   ): Promise<string> {
+    const deps = this.depsFor(opts);
     const spec = AGENTS_BY_ID[agentId];
     const onAgent = opts.onAgent ?? (() => {});
     const progress = opts.onProgress ?? (() => {});
     if (!spec || agentId === "chief-of-staff") {
       onAgent("chief-of-staff", true);
       try {
-        return await this.chatAnswer(message, opts.history ?? []);
+        return await this.chatAnswer(message, opts.history ?? [], deps);
       } finally {
         onAgent("chief-of-staff", false);
       }
@@ -117,7 +140,7 @@ export class Orchestrator {
     onAgent(spec.id, true);
     try {
       progress(`Direct line to ${spec.name}…`);
-      const res = await runAgent(spec, message, this.deps, "", opts.history ?? []);
+      const res = await runAgent(spec, message, deps, "", opts.history ?? []);
       return res.message;
     } finally {
       onAgent(spec.id, false);
@@ -137,8 +160,11 @@ export class Orchestrator {
       onAgent?: (agentId: string, active: boolean) => void;
       onA2A?: (from: string, to: string, msg: string) => void;
       onTurn?: (agentId: string, message: string) => void;
+      userId?: string;
+      services?: ToolServices;
     } = {},
   ): Promise<string> {
+    const deps = this.depsFor(opts);
     const specs = agentIds
       .map((id) => AGENTS_BY_ID[id])
       .filter((s): s is AgentSpec => !!s && s.id !== "chief-of-staff")
@@ -150,7 +176,7 @@ export class Orchestrator {
 
     if (specs.length < 2) {
       return specs[0]
-        ? await this.runDirect(specs[0].id, task, { onProgress: progress, onAgent })
+        ? await this.runDirect(specs[0].id, task, { onProgress: progress, onAgent, userId: opts.userId, services: opts.services })
         : "Wire at least two agents together to collaborate.";
     }
 
@@ -172,7 +198,7 @@ export class Orchestrator {
             `Now add YOUR part as the ${spec.name}: build on theirs, cover your specialty, fill the gaps — do NOT repeat what's already done. Be concrete.`
           : `${task}\n\nYou're opening a collaboration with ${specs.filter((s) => s !== spec).map((s) => s.name).join(" and ")}. ` +
             `Do YOUR part as the ${spec.name} first; your teammate(s) will build on it. Be concrete.`;
-        const res = await runAgent(spec, turnTask, this.deps, context, []);
+        const res = await runAgent(spec, turnTask, deps, context, []);
         turns.push({ agent: spec, output: res.message });
         onTurn(spec.id, res.message);
         context += `\n\n[${spec.name}]:\n${res.message}`;
@@ -230,6 +256,14 @@ export class Orchestrator {
     if (/\b(weather|forecast|temperature|how hot|how cold|will it rain|humidity)\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "secretary", task: outcome }] };
 
+    // Reminders / nudges → secretary (has the reminder tools).
+    if (/\b(remind me|reminder|nudge me|ping me|don'?t let me forget|wake me|alert me|set a reminder|my reminders)\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "secretary", task: outcome }] };
+
+    // Money / spend tracking → finance agent (bank CSV tools).
+    if (/\b(spend(ing)?|expenses?|my budget|transactions?|bank statement|my finances?|subscriptions?|import.{0,12}(csv|statement|transactions?)|how much did i (spend|pay|save)|where('?s| is) my money going|categor(y|ies|ize).{0,12}(spend|expense)?)\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "finance", task: outcome }] };
+
     // A pasted URL → research agent fetches & summarizes it.
     if (/\bhttps?:\/\/\S+/.test(outcome))
       return { mode: "delegate", plan: [{ agent: "research", task: outcome }] };
@@ -273,7 +307,7 @@ export class Orchestrator {
           "- Use \"chat\" for anything you can answer in prose: small talk, questions, advice, explanations, planning, and DRAFTS (emails, posts, JDs). This is the common case.\n" +
           "- Use \"delegate\" ONLY when the task needs a live tool: web research/news, weather, the CEO's Gmail, the CEO's Calendar, or storing/recalling memory. Then pick 1 agent.\n" +
           "- The message may be a SHORT REPLY to your previous question (use the conversation). E.g. if you asked which city and they reply 'Goa', delegate the weather task for Goa.\n\n" +
-          "Delegate targets: research (web/news), secretary (weather, remember/recall), email (Gmail: triage/read/draft/send), calendar (Google Calendar: list/create/reschedule).\n\n" +
+          "Delegate targets: research (web/news), secretary (weather, reminders/nudges, remember/recall), email (Gmail: triage/read/draft/send), calendar (Google Calendar: list/create/reschedule), finance (spend tracking from imported bank CSVs: summary/transactions).\n\n" +
           "Respond with ONE JSON object only. Examples:\n" +
           '{"mode":"chat"}   (for: "draft an email", "how do I...", "explain X", "plan my trip")\n' +
           '{"mode":"delegate","plan":[{"agent":"research","task":"find the 3 biggest fintech stories this week and summarize"}]}\n' +
@@ -301,8 +335,8 @@ export class Orchestrator {
   }
 
   /** Fast single-call conversational answer — no tool loop. Honest about v1 limits. */
-  private async chatAnswer(outcome: string, history: LLMMessage[] = []): Promise<string> {
-    const memories = await this.deps.services.memory.recall(outcome, 6).catch(() => []);
+  private async chatAnswer(outcome: string, history: LLMMessage[] = [], deps: AgentDeps = this.deps): Promise<string> {
+    const memories = await deps.services.memory.recall(outcome, 6).catch(() => []);
     const memBlock = memories.length
       ? "What you know about the CEO:\n" + memories.map((m) => `- ${m.key}: ${m.content}`).join("\n")
       : "";

@@ -23,6 +23,14 @@ interface Row {
   embedding: string | null;
   created_at: number;
   updated_at: number;
+  user_id: string | null;
+}
+
+/** Legacy tenant: rows written before multi-user (user_id IS NULL) belong here. */
+const OWNER = "owner";
+/** SQL fragment + params matching a tenant's rows, treating NULL as the owner. */
+function scopeSql(userId: string): { clause: string; params: string[] } {
+  return { clause: "(user_id = ? OR (user_id IS NULL AND ? = ?))", params: [userId, userId, OWNER] };
 }
 
 export class MemoryStore {
@@ -39,21 +47,26 @@ export class MemoryStore {
     source: string;
     confidence?: number;
     pinned?: boolean;
+    userId?: string;
   }): Promise<string> {
     const now = Date.now();
+    const userId = input.userId ?? OWNER;
+    const s = scopeSql(userId);
+    // Dedup within the SAME tenant only — two users may hold the same key independently.
     const existing = this.db
-      .prepare("SELECT * FROM memory WHERE layer = ? AND key = ?")
-      .get(input.layer, input.key) as Row | undefined;
+      .prepare(`SELECT * FROM memory WHERE layer = ? AND key = ? AND ${s.clause}`)
+      .get(input.layer, input.key, ...s.params) as Row | undefined;
 
     const embedding = await this.safeEmbed(`${input.key}: ${input.content}`);
     const embJson = embedding ? JSON.stringify(embedding) : null;
 
     if (existing) {
-      // Reinforcement: nudge confidence up, refresh content & recency.
+      // Reinforcement: nudge confidence up, refresh content & recency. Also claims any
+      // legacy NULL row for this tenant by stamping user_id.
       const conf = Math.min(1, Math.max(existing.confidence, input.confidence ?? 0.7) + 0.05);
       this.db
         .prepare(
-          "UPDATE memory SET content=?, source=?, confidence=?, pinned=?, embedding=?, updated_at=? WHERE id=?",
+          "UPDATE memory SET content=?, source=?, confidence=?, pinned=?, embedding=?, updated_at=?, user_id=? WHERE id=?",
         )
         .run(
           input.content,
@@ -62,6 +75,7 @@ export class MemoryStore {
           input.pinned ? 1 : existing.pinned,
           embJson,
           now,
+          userId,
           existing.id,
         );
       return existing.id;
@@ -70,8 +84,8 @@ export class MemoryStore {
     const id = randomUUID();
     this.db
       .prepare(
-        `INSERT INTO memory (id, layer, key, content, source, confidence, pinned, embedding, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO memory (id, layer, key, content, source, confidence, pinned, embedding, created_at, updated_at, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -84,6 +98,7 @@ export class MemoryStore {
         embJson,
         now,
         now,
+        userId,
       );
     return id;
   }
@@ -93,8 +108,8 @@ export class MemoryStore {
    * `minScore` filters out weakly-related memories — critical to stop an unrelated
    * memory (e.g. an earbuds note) from derailing an agent on a different task.
    */
-  async recall(query: string, k = 6, minScore = 0.45): Promise<MemoryRecord[]> {
-    const all = this.allRows();
+  async recall(query: string, k = 6, minScore = 0.45, userId: string = OWNER): Promise<MemoryRecord[]> {
+    const all = this.allRows(userId);
     if (all.length === 0) return [];
 
     const queryEmb = await this.safeEmbed(query);
@@ -126,12 +141,15 @@ export class MemoryStore {
       .map((x) => toRecord(x.r));
   }
 
-  list(layer?: MemoryLayer): MemoryRecord[] {
+  list(layer?: MemoryLayer, userId: string = OWNER): MemoryRecord[] {
+    const s = scopeSql(userId);
     const rows = layer
       ? (this.db
-          .prepare("SELECT * FROM memory WHERE layer = ? ORDER BY updated_at DESC")
-          .all(layer) as unknown as Row[])
-      : (this.db.prepare("SELECT * FROM memory ORDER BY updated_at DESC").all() as unknown as Row[]);
+          .prepare(`SELECT * FROM memory WHERE layer = ? AND ${s.clause} ORDER BY updated_at DESC`)
+          .all(layer, ...s.params) as unknown as Row[])
+      : (this.db
+          .prepare(`SELECT * FROM memory WHERE ${s.clause} ORDER BY updated_at DESC`)
+          .all(...s.params) as unknown as Row[]);
     return rows.map(toRecord);
   }
 
@@ -144,13 +162,15 @@ export class MemoryStore {
     this.db.prepare("UPDATE memory SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, id);
   }
 
-  count(): number {
-    const row = this.db.prepare("SELECT COUNT(*) AS n FROM memory").get() as { n: number };
+  count(userId: string = OWNER): number {
+    const s = scopeSql(userId);
+    const row = this.db.prepare(`SELECT COUNT(*) AS n FROM memory WHERE ${s.clause}`).get(...s.params) as { n: number };
     return row.n;
   }
 
-  private allRows(): Row[] {
-    return this.db.prepare("SELECT * FROM memory").all() as unknown as Row[];
+  private allRows(userId: string = OWNER): Row[] {
+    const s = scopeSql(userId);
+    return this.db.prepare(`SELECT * FROM memory WHERE ${s.clause}`).all(...s.params) as unknown as Row[];
   }
 
   private async safeEmbed(text: string): Promise<number[] | null> {

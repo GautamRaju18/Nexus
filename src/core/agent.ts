@@ -34,6 +34,8 @@ export interface AgentDeps {
   audit: AuditLog;
   approver: Approver;
   services: ToolServices;
+  /** The tenant this run acts for. Defaults to "owner" for single-user surfaces. */
+  userId: string;
 }
 
 export interface AgentResult {
@@ -120,6 +122,7 @@ export async function runAgent(
         sensitivity: "system",
         reversible: true,
         status: "ok",
+        userId: deps.userId,
       });
       return { agentId: spec.id, message, steps: step };
     }
@@ -155,6 +158,7 @@ export async function runAgent(
         sensitivity: tool.sensitivity,
         reversible: false,
         status: "blocked",
+        userId: deps.userId,
       });
       messages.push(observation(`Blocked: ${reason}. Report this to the user instead of acting.`));
       continue;
@@ -169,6 +173,7 @@ export async function runAgent(
       approvalSigs.add(sig);
       const ok = await deps.approver.approve({
         agentId: spec.id,
+        userId: deps.userId,
         toolId: tool.id,
         sensitivity: tool.sensitivity,
         preview: previewOf(tool, parsed.data),
@@ -182,6 +187,7 @@ export async function runAgent(
           sensitivity: tool.sensitivity,
           reversible: false,
           status: "denied",
+          userId: deps.userId,
         });
         messages.push(observation("The user DENIED this action. Do not retry it; find another path or stop and explain."));
         continue;
@@ -190,7 +196,7 @@ export async function runAgent(
 
     // Execute.
     try {
-      const result = await tool.handler(parsed.data, { agentId: spec.id, services: deps.services });
+      const result = await tool.handler(parsed.data, { agentId: spec.id, userId: deps.userId, services: deps.services });
       // A handler that RETURNS {error} (e.g. gmail_draft with missing fields) is a failure too —
       // count it so the loop guard can stop a repeating bad call, not just thrown errors.
       const errored = result && typeof result === "object" && "error" in (result as Record<string, unknown>);
@@ -202,6 +208,7 @@ export async function runAgent(
         sensitivity: tool.sensitivity,
         reversible: tool.sensitivity !== "money" && tool.sensitivity !== "legal",
         status: errored ? "error" : "ok",
+        userId: deps.userId,
       });
       messages.push(observation(JSON.stringify(result).slice(0, 3000)));
     } catch (e) {
@@ -213,6 +220,7 @@ export async function runAgent(
         sensitivity: tool.sensitivity,
         reversible: true,
         status: "error",
+        userId: deps.userId,
       });
       messages.push(observation(`Tool error: ${e}. Decide whether to retry differently or stop.`));
     }

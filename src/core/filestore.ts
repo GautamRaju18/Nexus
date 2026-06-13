@@ -5,8 +5,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { Vault } from "./security/vault";
-import type { KeyValue } from "./db";
+import type { SecretStore, KvStore } from "../types";
 
 export interface FileMeta {
   id: string;
@@ -21,8 +20,8 @@ const MAX_BYTES = 8 * 1024 * 1024; // 8 MB per file
 
 export class FileStore {
   constructor(
-    private vault: Vault,
-    private kv: KeyValue,
+    private vault: SecretStore,
+    private kv: KvStore,
   ) {}
 
   list(): FileMeta[] {

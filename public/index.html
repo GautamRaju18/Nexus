@@ -342,6 +342,18 @@
   #boot .bl{font-family:var(--mono); font-size:11px; letter-spacing:4px; color:var(--cy)}
   #boot .bar{width:280px; height:3px; background:rgba(28,230,255,.15); overflow:hidden}
   #boot .bar i{display:block; height:100%; width:0; background:var(--cy); box-shadow:var(--glow); animation:load 1.5s ease forwards}
+  /* Login gate — covers the cockpit until authenticated */
+  #login{position:fixed; inset:0; z-index:60; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px}
+  #login.show{display:flex}
+  #login .lt{font-family:var(--mono); font-size:30px; letter-spacing:12px; color:#eaffff; text-shadow:0 0 24px var(--cy)}
+  #login .ls{font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--cy); margin-bottom:8px}
+  #login form{display:flex; flex-direction:column; gap:10px; width:300px}
+  #login input{background:rgba(28,230,255,.06); border:1px solid rgba(28,230,255,.3); color:#eaffff; font-family:var(--mono); font-size:14px; padding:11px 13px; outline:none; letter-spacing:1px}
+  #login input:focus{border-color:var(--cy); box-shadow:var(--glow)}
+  #login button{background:var(--cy); color:#001016; border:none; font-family:var(--mono); font-weight:700; letter-spacing:2px; padding:11px; cursor:pointer; text-transform:uppercase}
+  #login .lerr{font-family:var(--mono); font-size:11px; color:var(--red); min-height:14px; letter-spacing:.5px; text-align:center}
+  .userchip{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--cy)}
+  .userchip b{color:#eaffff; letter-spacing:1px}
   @keyframes flick{0%,19%,21%,100%{opacity:1}20%{opacity:.4}}
   @keyframes load{to{width:100%}}
 
@@ -359,6 +371,17 @@
     <div class="bar"><i></i></div>
   </div>
 
+  <div id="login">
+    <div class="lt">J.A.R.V.I.S</div>
+    <div class="ls">AUTHENTICATION REQUIRED</div>
+    <form id="loginForm" autocomplete="on">
+      <input id="luser" name="username" placeholder="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <input id="lpass" name="password" type="password" placeholder="password" autocomplete="current-password">
+      <button type="submit">Sign In</button>
+      <div class="lerr" id="lerr"></div>
+    </form>
+  </div>
+
   <div class="hud">
     <div class="top">
       <div>
@@ -374,6 +397,7 @@
       <button class="wakebtn" id="wakeBtn" title='Always-listening: say "Hey Jarvis" to activate (on-device, audio never leaves your PC)'><span class="wo" id="wakeOrb"></span>Hey&nbsp;Jarvis</button>
       <button class="conn" id="connectBtn" style="display:none">Connect Google</button>
       <button class="kbtn" id="killBtn">Kill Switch</button>
+      <div class="userchip" id="userchip" style="display:none">⬡ <b id="uname">—</b><button class="iconbtn" id="logoutBtn" title="Log out">⎋</button></div>
     </div>
 
     <div class="stage" id="stage">
@@ -875,16 +899,21 @@ const QUICK=[
 ];
 (function(){const q=$('#quick');for(const [label,text] of QUICK){const b=document.createElement('button');b.className='chip';b.textContent=label;b.onclick=()=>{if(text.endsWith(' ')){input.value=text;input.focus();}else send(text);};q.appendChild(b);}})();
 
-// ── live events ──
-const ev=new EventSource('/api/events');
-ev.addEventListener('progress',e=>addProg(JSON.parse(e.data).text));
-ev.addEventListener('approval',e=>addApproval(JSON.parse(e.data)));
-ev.addEventListener('approval_resolved',e=>{const d=JSON.parse(e.data);markApproval(d.id,d.decision);});
-ev.addEventListener('state',e=>renderState(JSON.parse(e.data)));
-ev.addEventListener('agent',e=>{const d=JSON.parse(e.data);setActive(d.id,d.active);});
-ev.addEventListener('done',()=>{clearActive();});
-ev.addEventListener('a2a',e=>{const d=JSON.parse(e.data);addA2A(d.from,d.to,d.msg);flashComm(d.from);flashComm(d.to);arc(d.from,d.to);});
-ev.addEventListener('turn',e=>{const d=JSON.parse(e.data); addMsg('assistant', d.message, 'md', nm(d.id)); flashComm(d.id);}); // a wired agent's live contribution
+// ── live events (connected only AFTER login — a 401 would kill the EventSource for good) ──
+let ev=null;
+function connectEvents(){
+  if(ev) return;
+  ev=new EventSource('/api/events');
+  ev.addEventListener('progress',e=>addProg(JSON.parse(e.data).text));
+  ev.addEventListener('approval',e=>addApproval(JSON.parse(e.data)));
+  ev.addEventListener('approval_resolved',e=>{const d=JSON.parse(e.data);markApproval(d.id,d.decision);});
+  ev.addEventListener('state',e=>renderState(JSON.parse(e.data)));
+  ev.addEventListener('agent',e=>{const d=JSON.parse(e.data);setActive(d.id,d.active);});
+  ev.addEventListener('done',()=>{clearActive();});
+  ev.addEventListener('a2a',e=>{const d=JSON.parse(e.data);addA2A(d.from,d.to,d.msg);flashComm(d.from);flashComm(d.to);arc(d.from,d.to);});
+  ev.addEventListener('reminder',e=>{const d=JSON.parse(e.data); addProg('⏰ Reminder: '+d.text+(d.recurrence?' (repeats '+d.recurrence+')':'')); try{openChat();speak('Reminder: '+d.text);}catch{}});
+  ev.addEventListener('turn',e=>{const d=JSON.parse(e.data); addMsg('assistant', d.message, 'md', nm(d.id)); flashComm(d.id);}); // a wired agent's live contribution
+}
 function setActive(id,on){const n=nodeById[id];if(n)n.classList.toggle('active',!!on);}
 function clearActive(){for(const id in nodeById)nodeById[id].classList.remove('active');}
 const agentNames={'chief-of-staff':'Chief of Staff'};
@@ -1098,9 +1127,59 @@ $('#filesSearch')&&$('#filesSearch').addEventListener('input',drawFilesGrid);
 async function loadMemory(){const b=$('#tab-memory');b.innerHTML='<div class="empty">loading…</div>';const{memories}=await(await fetch('/api/memory')).json();b.innerHTML=memories.length?'':'<div class="empty">No memories yet.</div>';for(const m of memories)b.appendChild(el('logrow',`<span class="t">[${esc(m.layer)}]</span> <b>${esc(m.key)}</b>: ${esc(m.content)}`));}
 async function loadAudit(){const b=$('#tab-activity');b.innerHTML='<div class="empty">loading…</div>';const{entries}=await(await fetch('/api/audit')).json();b.innerHTML=entries.length?'':'<div class="empty">No activity logged.</div>';for(const e of entries){const t=new Date(e.ts).toLocaleTimeString('en-GB');b.appendChild(el('logrow',`<span class="t">${t}</span> ${esc(e.actor)} · ${esc(e.action)} · ${esc(e.status)}`));}}
 
-setTimeout(()=>{const b=$('#boot');b.style.opacity='0';setTimeout(()=>b.remove(),800);},1700);
-addMsg('assistant',"Good day, Sir. All systems online. State an outcome and I'll handle it — your inbox, calendar, research, drafting, and more. Press the mic to speak, or tap a quick action below.");
-refreshState(); loadFiles(); setTimeout(()=>input.focus(),1800);
+// ── Auth gate + persistent history ───────────────────────────────────────────
+let currentUser=null;
+function showLogin(){ $('#login').classList.add('show'); setTimeout(()=>{try{$('#luser').focus();}catch{}},120); }
+function hideLogin(){ $('#login').classList.remove('show'); }
+// Instant (no typewriter/TTS) render of a stored assistant message during replay.
+function renderAssistant(text,who){
+  const m=el('msg assistant'); m.appendChild(el('who', who?nm(who):'J.A.R.V.I.S'));
+  const body=document.createElement('div'); body.className='mdbody'; body.innerHTML=mdToHtml(text);
+  m.appendChild(body); activeThread().appendChild(m); scroll();
+}
+async function replayHistory(){
+  try{
+    const {messages}=await(await fetch('/api/history?scope=main')).json();
+    if(messages&&messages.length){
+      for(const m of messages){ if(m.role==='user') addMsg('user',m.content); else renderAssistant(m.content,m.agent); }
+      openChat();
+      return true;
+    }
+  }catch{}
+  return false;
+}
+async function initCockpit(username){
+  currentUser=username;
+  $('#uname').textContent=username; $('#userchip').style.display='';
+  hideLogin();
+  connectEvents();
+  const had=await replayHistory();
+  if(!had) addMsg('assistant',"Good day, Sir. All systems online. State an outcome and I'll handle it — your inbox, calendar, research, drafting, and more. Press the mic to speak, or tap a quick action below.");
+  refreshState(); loadFiles(); loadWeather(); setTimeout(()=>{try{input.focus();}catch{}},300);
+}
+async function boot(){
+  try{
+    const r=await fetch('/api/auth/me');
+    if(r.ok){ const {user}=await r.json(); await initCockpit(user.username); return; }
+  }catch{}
+  showLogin();
+}
+$('#loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const username=$('#luser').value.trim(), password=$('#lpass').value; $('#lerr').textContent='';
+  if(!username||!password){ $('#lerr').textContent='Enter username and password.'; return; }
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username,password})});
+    if(r.ok){ const {user}=await r.json(); $('#lpass').value=''; await initCockpit(user.username); }
+    else { const d=await r.json().catch(()=>({})); $('#lerr').textContent=d.error||'Login failed.'; }
+  }catch(err){ $('#lerr').textContent='Login failed: '+err.message; }
+});
+$('#logoutBtn').addEventListener('click', async ()=>{
+  try{ await fetch('/api/auth/logout',{method:'POST',headers:{'content-type':'application/json'}}); }catch{}
+  location.reload();
+});
+setTimeout(()=>{const b=$('#boot'); if(b){ b.style.opacity='0'; setTimeout(()=>b.remove(),800); }},1700);
+boot();
 </script>
 </body>
 </html>

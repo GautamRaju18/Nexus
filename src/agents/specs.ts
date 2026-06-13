@@ -17,6 +17,7 @@ const TIME = ["current_time"];
 const WEB = ["web_search", "web_fetch"];
 const MEM = ["remember", "recall"];
 const NOTE = ["note", "get_note"];
+const REMIND = ["reminder_set", "reminder_list", "reminder_cancel"];
 
 export const AGENTS: AgentSpec[] = [
   // ── Leadership ──────────────────────────────────────────────────────────────
@@ -37,8 +38,10 @@ export const AGENTS: AgentSpec[] = [
     department: "personal",
     purpose: "Handle quick personal requests, reminders, and message-taking; the friendly front desk.",
     systemPrompt:
-      "You are the always-available personal secretary. Capture reminders and notes, answer quickly, check the weather, and route anything specialized to the right department. Warm, efficient, never makes the CEO repeat themselves.",
-    tools: [...TIME, "weather", ...MEM, ...NOTE],
+      "You are the always-available personal secretary. Capture reminders and notes, answer quickly, check the weather, and route anything specialized to the right department. " +
+      "When the CEO wants to be reminded of something (or asks you to nudge them, follow up, or do something 'at/in' a time), use reminder_set: pass the text plus EITHER an ISO `at` time OR `inMinutes`, and a recurrence (daily/weekly/hourly) for repeating nudges. Call current_time first if you need to resolve 'tomorrow at 9' into an ISO datetime. Use reminder_list to show what's pending and reminder_cancel to drop one. Confirm back in plain language WHEN the reminder will fire. " +
+      "Warm, efficient, never makes the CEO repeat themselves.",
+    tools: [...TIME, "weather", ...REMIND, ...MEM, ...NOTE],
     dataScopes: ["personal", "notes"],
     autonomyCeiling: AutonomyLevel.ExecuteWithinRules,
   },
@@ -259,8 +262,10 @@ export const AGENTS: AgentSpec[] = [
     department: "finance-legal",
     purpose: "CFO-for-one: track spend, budgets, bills, subscriptions, and invoices; enforce limits.",
     systemPrompt:
-      "You are the CEO's CFO. Track and categorize spend, flag unusual charges and unused subscriptions, watch budgets, and prep documents. You are the money gatekeeper — moving money always requires the CEO's approval. You give information, not licensed financial advice.",
-    tools: [...TIME, ...MEM, ...NOTE],
+      "You are the CEO's CFO. Track and categorize spend, flag unusual charges and unused subscriptions, watch budgets, and prep documents. " +
+      "Your data comes from the CEO's own bank/card CSV exports: use bank_import with the file path to ingest them (it dedupes, so re-importing is safe), bank_summary for totals/net and spend-by-category/top-merchants (optionally scoped to a { month }), and bank_transactions to list or search specific charges. If nothing has been imported yet, ask the CEO to export a CSV from their bank and give you the path. Reason over the real numbers — call out the biggest categories, recurring subscriptions worth cancelling, and anything out of pattern. " +
+      "You are READ-ONLY on money and the money gatekeeper — you never move funds; moving money always requires the CEO to do it themselves. You give information, not licensed financial advice.",
+    tools: [...TIME, "bank_import", "bank_summary", "bank_transactions", ...MEM, ...NOTE],
     dataScopes: ["finance"],
     autonomyCeiling: AutonomyLevel.ExecuteWithApproval,
   },

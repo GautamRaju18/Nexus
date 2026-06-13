@@ -26,15 +26,19 @@ const PORT = Number(process.env.JARVIS_WEB_PORT ?? 4321);
 const HOST = "127.0.0.1";
 
 // ── Server-Sent Events hub ────────────────────────────────────────────────────
+// Each client is tagged with its userId so we can target a single tenant (their chat
+// progress, reminders, and approval cards) and never leak one user's activity to another.
 class SseHub {
-  private clients = new Set<ServerResponse>();
-  add(res: ServerResponse): void {
-    this.clients.add(res);
+  private clients = new Map<ServerResponse, string>();
+  add(res: ServerResponse, userId: string): void {
+    this.clients.set(res, userId);
     res.on("close", () => this.clients.delete(res));
   }
-  send(event: string, data: unknown): void {
+  /** Send to one user's clients (userId set), or broadcast to everyone (userId omitted). */
+  send(event: string, data: unknown, userId?: string): void {
     const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-    for (const res of this.clients) {
+    for (const [res, uid] of this.clients) {
+      if (userId && uid !== userId) continue;
       try {
         res.write(payload);
       } catch {
@@ -45,8 +49,10 @@ class SseHub {
 }
 
 // ── Approver: pushes a card over SSE, resolves on POST /api/approve ───────────
+// The card is routed to the requesting user's clients, and only that same user may
+// settle it (checked in the /api/approve handler).
 class WebApprover implements Approver {
-  private pending = new Map<string, { resolve: (b: boolean) => void; timer: NodeJS.Timeout }>();
+  private pending = new Map<string, { resolve: (b: boolean) => void; timer: NodeJS.Timeout; userId: string }>();
   private counter = 0;
   constructor(private sse: SseHub) {}
 
@@ -55,25 +61,31 @@ class WebApprover implements Approver {
     return new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => this.settle(id, false), 5 * 60 * 1000);
       timer.unref?.();
-      this.pending.set(id, { resolve, timer });
-      this.sse.send("approval", {
-        id,
-        agent: AGENTS_BY_ID[req.agentId]?.name ?? req.agentId,
-        tool: req.toolId,
-        sensitivity: req.sensitivity,
-        preview: req.preview,
-        reversible: req.reversible,
-      });
+      this.pending.set(id, { resolve, timer, userId: req.userId });
+      this.sse.send(
+        "approval",
+        {
+          id,
+          agent: AGENTS_BY_ID[req.agentId]?.name ?? req.agentId,
+          tool: req.toolId,
+          sensitivity: req.sensitivity,
+          preview: req.preview,
+          reversible: req.reversible,
+        },
+        req.userId,
+      );
     });
   }
 
-  settle(id: string, decision: boolean): boolean {
+  /** Settle a pending approval. If `byUserId` is given, it must own the approval. */
+  settle(id: string, decision: boolean, byUserId?: string): boolean {
     const e = this.pending.get(id);
     if (!e) return false;
+    if (byUserId && e.userId !== byUserId) return false;
     clearTimeout(e.timer);
     this.pending.delete(id);
     e.resolve(decision);
-    this.sse.send("approval_resolved", { id, decision });
+    this.sse.send("approval_resolved", { id, decision }, e.userId);
     return true;
   }
 }
@@ -96,9 +108,24 @@ function readJson(req: IncomingMessage, maxBytes = 2_000_000): Promise<any> {
     req.on("error", reject);
   });
 }
-function json(res: ServerResponse, code: number, obj: unknown): void {
-  res.writeHead(code, { "content-type": "application/json" });
+function json(res: ServerResponse, code: number, obj: unknown, headers: Record<string, string> = {}): void {
+  res.writeHead(code, { "content-type": "application/json", ...headers });
   res.end(JSON.stringify(obj));
+}
+const SESSION_COOKIE = "jarvis_session";
+/** Parse the request's Cookie header into a name→value map. */
+function parseCookies(req: IncomingMessage): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of (req.headers.cookie ?? "").split(";")) {
+    const i = part.indexOf("=");
+    if (i < 0) continue;
+    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
+/** Build a Set-Cookie value for the session token (HttpOnly, SameSite=Strict, loopback). */
+function sessionCookie(token: string, maxAgeSec: number): string {
+  return `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSec}`;
 }
 function isLoopback(req: IncomingMessage): boolean {
   const a = req.socket.remoteAddress ?? "";
@@ -134,15 +161,27 @@ async function main(): Promise<void> {
   const sse = new SseHub();
   const approver = new WebApprover(sse);
   const orch = rt.buildOrchestrator(approver);
-  const history: LLMMessage[] = [];
-  const directHist = new Map<string, LLMMessage[]>(); // per-agent history for direct-line chats
-  const files = new FileStore(rt.vault, rt.kv); // encrypted local file store
+  rt.auth.purgeExpired();
+
+  // Per-user encrypted file store, built on that tenant's scoped vault/kv view.
+  const filesFor = (userId: string): FileStore => {
+    const s = rt.scope(userId);
+    return new FileStore(s.vault, s.kv);
+  };
+  // Resolve the session cookie to the acting user, or null if unauthenticated.
+  const sessionUser = (req: IncomingMessage) => rt.auth.resolve(parseCookies(req)[SESSION_COOKIE]);
+
+  // Proactive nudges: deliver each due reminder ONLY to its own user's clients.
+  rt.startScheduler((r) =>
+    sse.send("reminder", { id: r.id, text: r.text, recurrence: r.recurrence, due: r.dueAt }, r.userId),
+  );
   let chatQueue: Promise<void> = Promise.resolve();
 
-  const state = () => ({
+  // Per-user state. memoryCount is the user's; autonomy/kill are global safety controls.
+  const state = (userId: string) => ({
     brain: rt.llm.name,
     killed: rt.policy.isKilled(),
-    memoryCount: rt.memory.count(),
+    memoryCount: rt.memory.count(userId),
     google: { configured: rt.google.isConfigured(), connected: rt.google.isConnected() },
     agents: AGENTS.map((a) => ({
       id: a.id,
@@ -182,6 +221,30 @@ async function main(): Promise<void> {
         return res.end(html);
       }
 
+      // ── Auth (login is the only public API; accounts are pre-seeded via the user CLI) ──
+      if (method === "POST" && path === "/api/auth/login") {
+        const body = await readJson(req).catch(() => ({}));
+        const user = rt.auth.verify(String(body.username ?? ""), String(body.password ?? ""));
+        if (!user) return json(res, 401, { error: "invalid username or password" });
+        const token = rt.auth.startSession(user.id);
+        return json(res, 200, { user: { username: user.username } }, { "set-cookie": sessionCookie(token, 30 * 86400) });
+      }
+      if (method === "GET" && path === "/api/auth/me") {
+        const sess = sessionUser(req);
+        return sess ? json(res, 200, { user: { username: sess.username } }) : json(res, 401, { error: "not authenticated" });
+      }
+
+      // ── Gate: everything below requires a valid session ──
+      const sess = sessionUser(req);
+      if (!sess) return json(res, 401, { error: "authentication required" });
+      const userId = sess.userId;
+
+      if (method === "POST" && path === "/api/auth/logout") {
+        const token = parseCookies(req)[SESSION_COOKIE];
+        if (token) rt.auth.endSession(token);
+        return json(res, 200, { ok: true }, { "set-cookie": sessionCookie("", 0) });
+      }
+
       if (method === "GET" && path === "/api/events") {
         res.writeHead(200, {
           "content-type": "text/event-stream",
@@ -189,13 +252,19 @@ async function main(): Promise<void> {
           connection: "keep-alive",
         });
         res.write(": connected\n\n");
-        sse.add(res);
+        sse.add(res, userId);
         return; // keep the connection open
       }
 
-      if (method === "GET" && path === "/api/state") return json(res, 200, state());
-      if (method === "GET" && path === "/api/memory") return json(res, 200, { memories: rt.memory.list().slice(0, 100) });
-      if (method === "GET" && path === "/api/audit") return json(res, 200, { entries: rt.audit.recent(50) });
+      if (method === "GET" && path === "/api/state") return json(res, 200, state(userId));
+      if (method === "GET" && path === "/api/memory") return json(res, 200, { memories: rt.memory.list(undefined, userId).slice(0, 100) });
+      if (method === "GET" && path === "/api/audit") return json(res, 200, { entries: rt.audit.recent(50, userId) });
+
+      // Replay a user's persisted transcript (survives refresh AND server restart).
+      if (method === "GET" && path === "/api/history") {
+        const scope = (url.searchParams.get("scope") || "main").slice(0, 60);
+        return json(res, 200, { messages: rt.conversations.history(userId, scope, 200) });
+      }
 
       if (method === "GET" && path === "/api/weather") {
         const city = (url.searchParams.get("city") || process.env.JARVIS_HOME_CITY || "Hyderabad").slice(0, 60);
@@ -236,7 +305,8 @@ async function main(): Promise<void> {
         }
       }
 
-      // ── Encrypted local file store ──
+      // ── Encrypted local file store (isolated per user) ──
+      const files = filesFor(userId);
       if (method === "GET" && path === "/api/files") return json(res, 200, { files: files.list() });
 
       if (method === "POST" && path === "/api/files") {
@@ -279,26 +349,32 @@ async function main(): Promise<void> {
         // Optional targeting: a single agent (direct line) or a list (wired circuit).
         const agentId = typeof body.agentId === "string" ? body.agentId : undefined;
         const agents = Array.isArray(body.agents) ? body.agents.map((x: unknown) => String(x)) : undefined;
+        const services = rt.scope(userId); // this user's isolated stores
         let answer = "";
+        // Every live event is targeted to THIS user's clients only.
         const cb = {
-          onProgress: (m: string) => sse.send("progress", { text: m }),
-          onAgent: (id: string, active: boolean) => sse.send("agent", { id, active }),
-          onA2A: (from: string, to: string, msg: string) => sse.send("a2a", { from, to, msg: msg.slice(0, 90) }),
-          onTurn: (id: string, msg: string) => sse.send("turn", { id, name: AGENTS_BY_ID[id]?.name ?? id, message: msg }),
+          onProgress: (m: string) => sse.send("progress", { text: m }, userId),
+          onAgent: (id: string, active: boolean) => sse.send("agent", { id, active }, userId),
+          onA2A: (from: string, to: string, msg: string) => sse.send("a2a", { from, to, msg: msg.slice(0, 90) }, userId),
+          onTurn: (id: string, msg: string) => sse.send("turn", { id, name: AGENTS_BY_ID[id]?.name ?? id, message: msg }, userId),
+          userId,
+          services,
         };
-        // Serialize chats so two overlapping requests can't interleave history.
+        // Serialize chats so two overlapping requests can't interleave persisted turns.
         await (chatQueue = chatQueue
           .then(async () => {
             if (agents && agents.length >= 2) {
               answer = await orch.runWired(agents, message, cb); // turns surface live via onTurn
+              rt.conversations.appendTurn(userId, "main", message, answer);
             } else if (agentId) {
-              const h = directHist.get(agentId) ?? [];
-              answer = await orch.runDirect(agentId, message, { history: h.slice(-8), ...cb });
-              h.push({ role: "user", content: message }, { role: "assistant", content: answer });
-              directHist.set(agentId, h);
+              const scope = `direct:${agentId}`;
+              const h = rt.conversations.recent(userId, scope, 8);
+              answer = await orch.runDirect(agentId, message, { history: h, ...cb });
+              rt.conversations.appendTurn(userId, scope, message, answer, agentId);
             } else {
-              answer = await orch.handle(message, { history: history.slice(-8), ...cb });
-              history.push({ role: "user", content: message }, { role: "assistant", content: answer });
+              const h = rt.conversations.recent(userId, "main", 8);
+              answer = await orch.handle(message, { history: h, ...cb });
+              rt.conversations.appendTurn(userId, "main", message, answer);
             }
           })
           .catch((e) => {
@@ -307,13 +383,14 @@ async function main(): Promise<void> {
               ? "⚠️ The free AI brains are rate-limited right now (this happens on free tiers under load). Give it ~30–60 seconds and try again — I auto-recover. For unlimited, fully-offline use, install Ollama (ollama.com)."
               : `⚠️ Something went wrong: ${m}`;
           })
-          .finally(() => sse.send("done", {}))); // clear any lingering active pulses
+          .finally(() => sse.send("done", {}, userId))); // clear any lingering active pulses
         return json(res, 200, { answer });
       }
 
       if (method === "POST" && path === "/api/approve") {
         const body = await readJson(req);
-        return json(res, 200, { ok: approver.settle(String(body.id), Boolean(body.decision)) });
+        // byUserId ensures one user can't settle another user's approval card.
+        return json(res, 200, { ok: approver.settle(String(body.id), Boolean(body.decision), userId) });
       }
 
       if (method === "POST" && path === "/api/autonomy") {
@@ -324,7 +401,7 @@ async function main(): Promise<void> {
         if (!Number.isInteger(n) || n < 0 || n > 5 || n > spec.autonomyCeiling)
           return json(res, 400, { error: `level must be 0–${spec.autonomyCeiling}` });
         rt.policy.setAutonomy(spec.id, n as AutonomyLevel);
-        sse.send("state", state());
+        sse.send("state", state(userId), userId);
         return json(res, 200, { ok: true });
       }
 
@@ -332,16 +409,16 @@ async function main(): Promise<void> {
         const body = await readJson(req).catch(() => ({}));
         const on = body.on === undefined ? !rt.policy.isKilled() : Boolean(body.on);
         rt.policy.setKill(on);
-        sse.send("state", state());
+        sse.send("state", state(userId), userId);
         return json(res, 200, { killed: on });
       }
 
       if (method === "POST" && path === "/api/connect") {
         if (!rt.google.isConfigured()) return json(res, 400, { error: "Google not configured in .env (see SETUP-GOOGLE.md)" });
         rt.google
-          .connect((m) => sse.send("progress", { text: m }))
-          .then(() => sse.send("state", state()))
-          .catch((e) => sse.send("progress", { text: `Google connect failed: ${(e as Error).message}` }));
+          .connect((m) => sse.send("progress", { text: m }, userId))
+          .then(() => sse.send("state", state(userId), userId))
+          .catch((e) => sse.send("progress", { text: `Google connect failed: ${(e as Error).message}` }, userId));
         return json(res, 200, { started: true });
       }
 

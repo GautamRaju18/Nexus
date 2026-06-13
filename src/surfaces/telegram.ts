@@ -279,6 +279,17 @@ async function main(): Promise<void> {
   const orch = approver ? rt.buildOrchestrator(approver) : null;
   const history: LLMMessage[] = [];
 
+  // Proactive nudges: deliver due reminders straight to the owner's chat. Only runs
+  // once the owner is known (otherwise there's no one to notify).
+  if (ownerId !== null) {
+    rt.startScheduler((r) => {
+      const when = r.recurrence ? ` _(repeats ${r.recurrence})_` : "";
+      void tgSend(token, "sendMessage", { chat_id: ownerId, text: `⏰ Reminder: ${r.text}${when}`, parse_mode: "Markdown" }).catch(
+        (e) => console.error("reminder send failed:", (e as Error).message),
+      );
+    }, "owner");
+  }
+
   // Messages are processed serially on this chain; the poll loop NEVER awaits it
   // (otherwise a message awaiting an approval would block delivery of the button press).
   let queue: Promise<void> = Promise.resolve();

@@ -12,7 +12,9 @@
     "cli": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./src/surfaces/cli.ts",
     "telegram": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./src/surfaces/telegram.ts",
     "web": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./src/surfaces/web.ts",
+    "user": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./scripts/user.ts",
     "smoke": "node --experimental-sqlite --import tsx ./scripts/smoke.ts",
+    "authtest": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./scripts/authtest.ts",
     "livetest": "node --experimental-sqlite --import tsx ./scripts/livetest.ts",
     "convotest": "node --experimental-sqlite --import tsx ./scripts/convotest.ts",
     "typecheck": "tsc --noEmit"
