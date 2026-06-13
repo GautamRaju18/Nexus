@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>J.A.R.V.I.S</title>
+<style>
+  :root{
+    --cy:#1ce6ff; --cy2:#1488ff; --cyd:#0a3a52; --amber:#ffb020; --red:#ff4b5c; --good:#33ffb0;
+    --bg:#020812; --panel:rgba(8,22,38,.55); --line:rgba(28,230,255,.22); --line2:rgba(28,230,255,.4);
+    --text:#cdeefb; --dim:#5d86a0; --glow:0 0 12px rgba(28,230,255,.55);
+    --mono:"Consolas","SF Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--bg); color:var(--text); height:100vh; overflow:hidden;
+    font-family:"Segoe UI",system-ui,sans-serif;
+    background-image:
+      radial-gradient(900px 600px at 50% 18%, rgba(20,90,140,.30), transparent 60%),
+      radial-gradient(1200px 800px at 50% 120%, rgba(10,60,90,.25), transparent 60%);
+  }
+  .fx{position:fixed; inset:0; pointer-events:none; z-index:1;}
+  .grid{background-image:linear-gradient(rgba(28,230,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(28,230,255,.05) 1px,transparent 1px);background-size:44px 44px; mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 80%);}
+  .scan{background:linear-gradient(rgba(28,230,255,.06),transparent 8%); height:14px; animation:scan 7s linear infinite; opacity:.6;}
+  .vig{box-shadow:inset 0 0 240px 60px rgba(0,0,0,.85);}
+  @keyframes scan{0%{transform:translateY(-20px)}100%{transform:translateY(100vh)}}
+
+  .brk{position:fixed; width:38px; height:38px; border:2px solid var(--line2); z-index:3; filter:drop-shadow(var(--glow));}
+  .brk.tl{top:10px;left:10px;border-right:0;border-bottom:0}
+  .brk.tr{top:10px;right:10px;border-left:0;border-bottom:0}
+  .brk.bl{bottom:10px;left:10px;border-right:0;border-top:0}
+  .brk.br{bottom:10px;right:10px;border-left:0;border-top:0}
+
+  .hud{position:relative; z-index:2; height:100vh; display:flex; flex-direction:column; padding:14px 22px; gap:12px;}
+
+  .top{display:flex; align-items:center; gap:16px; padding:6px 14px; border:1px solid var(--line);
+    background:var(--panel); clip-path:polygon(0 0,100% 0,100% 70%,98.5% 100%,1.5% 100%,0 70%);}
+  .title{font-family:var(--mono); font-weight:700; font-size:24px; letter-spacing:7px; color:#eaffff; text-shadow:0 0 18px rgba(28,230,255,.9),0 0 4px #fff;}
+  .sub{font-family:var(--mono); font-size:10px; letter-spacing:3px; color:var(--dim); text-transform:uppercase;}
+  .spacer{flex:1}
+  .read{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; text-align:right; line-height:1.5}
+  .read b{color:var(--cy); text-shadow:var(--glow)}
+  .clock{font-family:var(--mono); font-size:20px; letter-spacing:3px; color:#eaffff; text-shadow:var(--glow)}
+  .iconbtn{font-family:var(--mono); font-size:15px; cursor:pointer; padding:7px 11px; background:transparent; color:var(--cy); border:1px solid var(--line2); clip-path:polygon(8% 0,100% 0,92% 100%,0 100%);}
+  .iconbtn:hover{box-shadow:var(--glow)}
+  .iconbtn.off{color:var(--dim); border-color:var(--line)}
+  .iconbtn.on{color:#021018; background:linear-gradient(135deg,var(--cy),var(--cy2)); border-color:var(--cy); box-shadow:var(--glow)}
+  /* Wake-word button + status orb */
+  .wakebtn{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer; padding:7px 12px; background:transparent; color:var(--dim); border:1px solid var(--line2); clip-path:polygon(8% 0,100% 0,92% 100%,0 100%);}
+  .wakebtn:hover{box-shadow:var(--glow); color:var(--cy)}
+  .wakebtn.on{color:var(--good); border-color:var(--good); box-shadow:0 0 14px rgba(51,255,176,.3)}
+  .wo{width:9px; height:9px; border-radius:50%; background:var(--dim); box-shadow:0 0 0 0 rgba(51,255,176,.5); transition:background .2s}
+  .wakebtn.on .wo{background:var(--good)}
+  .wo.armed{background:var(--good); animation:wakePulse 1.6s ease-out infinite}
+  .wo.triggered{background:#eaffff; animation:none; box-shadow:0 0 14px 4px var(--cy)}
+  @keyframes wakePulse{0%{box-shadow:0 0 0 0 rgba(51,255,176,.55)}70%{box-shadow:0 0 0 9px rgba(51,255,176,0)}100%{box-shadow:0 0 0 0 rgba(51,255,176,0)}}
+  .kbtn{font-family:var(--mono); font-size:11px; letter-spacing:2px; cursor:pointer; padding:8px 14px; text-transform:uppercase; background:transparent; color:var(--cy); border:1px solid var(--line2); clip-path:polygon(8% 0,100% 0,92% 100%,0 100%);}
+  .kbtn:hover{box-shadow:var(--glow)}
+  .kbtn.active{background:var(--red); color:#1a0407; border-color:var(--red); box-shadow:0 0 18px rgba(255,75,92,.7)}
+  .conn{font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:7px 12px; background:transparent; color:var(--amber); border:1px solid var(--amber); cursor:pointer; text-transform:uppercase; clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+
+  .cols{flex:1; display:grid; grid-template-columns:300px 1fr 360px; gap:14px; min-height:0;}
+  .col{display:flex; flex-direction:column; gap:12px; min-height:0;}
+  .card{border:1px solid var(--line); background:var(--panel); position:relative;
+    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));}
+  .card h3{margin:0; padding:9px 14px; font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--cy); text-transform:uppercase; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center;}
+  .card h3::before{content:""; width:6px; height:6px; background:var(--cy); box-shadow:var(--glow); transform:rotate(45deg)}
+
+  .reactor{display:flex; align-items:center; justify-content:center; padding:14px;}
+  .reactor svg{width:240px; height:240px; filter:drop-shadow(0 0 16px rgba(28,230,255,.6))}
+  .ring{fill:none; stroke:var(--cy); transform-origin:120px 120px}
+  .r-out{stroke:rgba(28,230,255,.35); stroke-width:1.5; stroke-dasharray:3 7; animation:spin 26s linear infinite}
+  .r-mid{stroke:rgba(28,230,255,.7); stroke-width:2; stroke-dasharray:30 14; animation:spin 16s linear infinite reverse}
+  .r-in{stroke:rgba(28,230,255,.55); stroke-width:1; stroke-dasharray:2 4; animation:spin 40s linear infinite}
+  .core{fill:url(#core); animation:pulse 3.2s ease-in-out infinite}
+  .seg{stroke:var(--cy); stroke-width:2; opacity:.8}
+  /* busy = working: rings whip faster, core pulses hot */
+  .reactor.busy .r-mid{animation-duration:5s} .reactor.busy .r-out{animation-duration:9s} .reactor.busy .r-in{animation-duration:14s}
+  .reactor.busy .core{animation-duration:1s} .reactor.busy svg{filter:drop-shadow(0 0 28px rgba(28,230,255,.95))}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{opacity:.85; filter:brightness(1)}50%{opacity:1; filter:brightness(1.45)}}
+
+  .gauges{display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px;}
+  .gauge{text-align:center; border:1px solid var(--line); padding:10px 6px; background:rgba(8,22,38,.4)}
+  .gauge .v{font-family:var(--mono); font-size:22px; color:#eaffff; text-shadow:var(--glow)}
+  .gauge .l{font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-top:3px}
+
+  /* ── Arc-reactor detail ── */
+  .coils{transform-origin:120px 120px; animation:spin 30s linear infinite reverse}
+  .coils path{filter:drop-shadow(0 0 3px rgba(28,230,255,.7))}
+  #ticks line{stroke:rgba(28,230,255,.4)}
+  .coreback{fill:#03161f; stroke:var(--cy); stroke-width:1.5; filter:drop-shadow(0 0 10px rgba(28,230,255,.5))}
+  .tri{fill:rgba(28,230,255,.1); stroke:#eaffff; stroke-width:1.6; transform-origin:120px 120px; filter:drop-shadow(0 0 7px var(--cy)); animation:trip 3.2s ease-in-out infinite}
+  .haze{animation:pulse 3.4s ease-in-out infinite}
+  @keyframes trip{0%,100%{opacity:.5}50%{opacity:1}}
+  .reactor.busy .coils{animation-duration:8s} .reactor.busy .tri{animation-duration:1s; fill:rgba(28,230,255,.24)}
+  .outbar{display:flex; align-items:center; gap:9px; padding:2px 16px 14px; font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase}
+  .outbar i{flex:1; height:6px; background:rgba(28,230,255,.12); border:1px solid var(--line); position:relative; overflow:hidden}
+  .outbar i b{position:absolute; inset:0 30% 0 0; background:linear-gradient(90deg,var(--cy2),var(--cy)); box-shadow:var(--glow); animation:outp 2.6s ease-in-out infinite}
+  .outbar em{color:var(--cy); font-style:normal; text-shadow:var(--glow)}
+  @keyframes outp{0%,100%{right:34%}50%{right:12%}}
+
+  /* ── Weather panel ── */
+  .wx{padding:12px 16px 16px}
+  .wxload{font-family:var(--mono); font-size:12px; color:var(--dim); padding:10px 0; letter-spacing:1px}
+  .wx .top2{display:flex; align-items:flex-start; justify-content:space-between; gap:8px}
+  .wx .temp{font-family:var(--mono); font-size:46px; line-height:.95; color:#eaffff; text-shadow:var(--glow)}
+  .wx .temp sup{font-size:18px; color:var(--cy)}
+  .wx .cond{text-align:right; font-size:12px; color:var(--text); padding-top:3px}
+  .wx .cond .city{font-family:var(--mono); font-size:10px; letter-spacing:1.5px; color:var(--cy); text-transform:uppercase; margin-bottom:4px}
+  .wx .met{display:grid; grid-template-columns:1fr 1fr; gap:0 16px; margin-top:12px}
+  .wx .met div{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--dim); border-bottom:1px solid rgba(28,230,255,.08); padding:3px 0}
+  .wx .met b{color:var(--text); font-weight:500}
+  .wx .fc{display:flex; gap:6px; margin-top:12px}
+  .wx .fc div{flex:1; text-align:center; border:1px solid var(--line); padding:6px 2px; background:rgba(8,22,38,.4)}
+  .wx .fc .d{font-family:var(--mono); font-size:9px; letter-spacing:1px; color:var(--cy); text-transform:uppercase}
+  .wx .fc .r{font-family:var(--mono); font-size:12px; color:#eaffff; margin-top:3px}
+
+  /* ── Diagnostics ── */
+  .diag{padding:12px 16px 4px}
+  .scopewrap{position:relative; border:1px solid var(--line); background:rgba(2,12,22,.6)}
+  .scopewrap canvas{display:block; width:100%; height:58px}
+  .scopelbl{position:absolute; top:3px; right:6px; font-family:var(--mono); font-size:8px; letter-spacing:1px; color:var(--dim)}
+  .bars{display:flex; gap:8px; margin-top:10px}
+  .barcol{flex:1; text-align:center}
+  .barcol canvas{width:100%; height:38px; border:1px solid var(--line); background:rgba(2,12,22,.5); display:block}
+  .barcol span{font-family:var(--mono); font-size:8px; letter-spacing:1.5px; color:var(--dim); display:block; margin-top:3px}
+
+  /* ── Big clock ── */
+  .clockcard{text-align:center; padding:14px 10px 16px}
+  .bigclock{font-family:var(--mono); font-size:38px; letter-spacing:4px; color:#eaffff; text-shadow:0 0 18px var(--cy),0 0 4px #fff; line-height:1}
+  .bigdate{font-family:var(--mono); font-size:12px; letter-spacing:3px; color:var(--cy); text-transform:uppercase; margin-top:6px}
+  .clkmeta{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px; font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--dim)}
+  .clkmeta .dot{width:5px; height:5px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good); animation:pulse 2s ease-in-out infinite}
+
+  .cols{grid-template-columns:320px 1fr 360px}
+  .col.left{overflow-y:auto; overflow-x:hidden}
+
+  /* ── Full-bleed cockpit: side rails + top/bottom strips frame a centred reactor ── */
+  .stage{position:relative; flex:1; display:grid; gap:10px; min-height:0;
+    grid-template-columns:290px minmax(0,1fr) 304px;
+    grid-template-rows:auto minmax(0,1fr) auto;}
+  .rail{display:flex; flex-direction:column; gap:10px; min-height:0; grid-row:1 / -1}
+  .railL{grid-column:1} .railR{grid-column:3}
+  .rail > .card{flex:none}
+  .rail .tabcard{flex:1 1 0; min-height:120px; display:flex; flex-direction:column}
+  .tabcard .panel{flex:1; min-height:0}
+
+  .strip{grid-column:2; display:flex; align-items:center; gap:12px; border:1px solid var(--line); background:var(--panel); padding:0 16px; min-height:40px;}
+  .stripT{grid-row:1; justify-content:space-between; overflow:hidden; clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,12px 100%)}
+  .stripB{grid-row:3; clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 100%,0 100%)}
+  .ro{display:flex; flex-direction:column; line-height:1.3; white-space:nowrap}
+  .ro span{font-family:var(--mono); font-size:8px; letter-spacing:1.5px; color:var(--dim)}
+  .ro b{font-family:var(--mono); font-size:12px; color:#eaffff; text-shadow:var(--glow); font-weight:500}
+  .ro b.ok{color:var(--good); text-shadow:0 0 8px var(--good)}
+  .sysline{font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--cy); white-space:nowrap; flex:none}
+  .stripB canvas{height:26px; flex:1; width:auto; min-width:120px; opacity:.85}
+  .brand{font-family:var(--mono); font-size:11px; letter-spacing:4px; color:var(--dim); white-space:nowrap; flex:none}
+
+  .hub{grid-column:2; grid-row:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:0; overflow:hidden; z-index:1}
+  .hub .reactor{padding:0; cursor:pointer; transition:transform .3s}
+  .hub .reactor svg{width:min(50vh,440px); height:min(50vh,440px)}
+  .hub .reactor:hover{transform:scale(1.015)}
+  .hub .reactor:hover svg{filter:drop-shadow(0 0 30px rgba(28,230,255,.95))}
+  .hub .reactor.dropon{transform:scale(1.05)} .hub .reactor.dropon svg{filter:drop-shadow(0 0 44px rgba(28,230,255,1))}
+  .hub .outbar{width:300px; padding:0; justify-content:center}
+  .commsbtn{display:inline-flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12px; letter-spacing:3px; text-transform:uppercase; cursor:pointer; padding:11px 26px; color:#021018; background:linear-gradient(135deg,var(--cy),var(--cy2)); border:none; clip-path:polygon(8% 0,100% 0,92% 100%,0 100%); font-weight:700; animation:cbreathe 2.8s ease-in-out infinite}
+  .commsbtn:hover{filter:brightness(1.15)}
+  .commsbtn .cdot{width:8px; height:8px; border-radius:50%; background:#021018; opacity:.7}
+  @keyframes cbreathe{0%,100%{box-shadow:0 0 16px rgba(28,230,255,.4)}50%{box-shadow:0 0 30px rgba(28,230,255,.85)}}
+
+  .coreswrap{padding:12px 16px} .coreswrap canvas{width:100%; height:74px; display:block}
+  .nettop{display:flex; justify-content:space-between; padding:9px 16px 0; font-family:var(--mono); font-size:10px; color:var(--dim)}
+  .nettop b{color:var(--cy); text-shadow:var(--glow)}
+  .netwrap{padding:6px 16px 14px} .netwrap canvas{width:100%; height:56px; display:block; border:1px solid var(--line); background:rgba(2,12,22,.5)}
+
+  .chatwrap{position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center}
+  .chatwrap[hidden]{display:none}
+  .chatbackdrop{position:absolute; inset:0; background:rgba(2,8,18,.42); backdrop-filter:blur(1.5px); -webkit-backdrop-filter:blur(1.5px)}
+  /* A2A transmission overlay — pulses + beams between nodes and the reactor */
+  .fxlines{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:8; overflow:visible}
+  .fxbeam{fill:none; stroke-linecap:round; filter:url(#glowf)}
+  .fxbeam.draw{animation:beamdraw .42s ease forwards}
+  @keyframes beamdraw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
+  .chatwrap .comms{position:relative; z-index:21; flex:none; width:min(660px,92%); height:min(78vh,680px); box-shadow:0 0 60px rgba(28,230,255,.28); animation:popin .26s cubic-bezier(.2,.9,.3,1.15)}
+  @keyframes popin{from{opacity:0; transform:scale(.93) translateY(14px)}to{opacity:1; transform:none}}
+  .xbtn{margin-left:auto; background:transparent; border:1px solid var(--line2); color:var(--cy); font-family:var(--mono); cursor:pointer; width:24px; height:22px; line-height:1; font-size:12px; padding:0}
+  .xbtn:hover{border-color:var(--red); color:var(--red)}
+
+  /* direct-line / wired-circuit mode banner + node states */
+  .modebar{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:8px 14px; border-bottom:1px solid var(--line); color:var(--cy); text-transform:uppercase; background:rgba(28,230,255,.08)}
+  .modebar.wire{color:var(--amber); background:rgba(255,176,32,.1); border-color:rgba(255,176,32,.4)}
+  .modebar .clr{margin-left:auto; background:transparent; border:1px solid currentColor; color:inherit; font-family:var(--mono); font-size:9px; padding:3px 9px; cursor:pointer; text-transform:uppercase; letter-spacing:1px}
+  .modebar .clr:hover{filter:brightness(1.3)}
+  .node .wire{background:transparent; border:1px solid var(--line2); color:var(--dim); cursor:pointer; font-size:11px; width:26px; height:24px; padding:0; flex:none; line-height:1}
+  .node .wire:hover{color:var(--cy); border-color:var(--cy); box-shadow:var(--glow)}
+  .node.wired{background:linear-gradient(90deg,rgba(255,176,32,.16),transparent); border-left-color:var(--amber)}
+  .node.wired .wire{color:#021018; background:var(--amber); border-color:var(--amber); box-shadow:0 0 10px rgba(255,176,32,.6)}
+  .node.wired .nm{color:#ffd98a}
+  .node.direct{background:linear-gradient(90deg,rgba(28,230,255,.2),transparent); border-left-color:var(--cy)}
+  .node.direct .nm{color:#eaffff; text-shadow:var(--glow)}
+  .node.direct .st{background:var(--cy); box-shadow:0 0 12px var(--cy)}
+  /* drag-and-drop wiring */
+  .node[draggable="true"]{cursor:grab}
+  .node.dragging{opacity:.45; outline:1px dashed var(--cy); cursor:grabbing}
+  .node.droptarget{background:linear-gradient(90deg,rgba(255,176,32,.3),transparent); border-left-color:var(--amber); outline:1px dashed var(--amber); outline-offset:-1px}
+  .node.droptarget .nm{color:#ffd98a; text-shadow:0 0 8px rgba(255,176,32,.6)}
+  .unwirezone{display:none; text-align:center; font-family:var(--mono); font-size:10px; letter-spacing:1.5px; color:var(--red); text-transform:uppercase; padding:10px 8px; border-top:1px dashed var(--red); background:rgba(255,75,92,.08); flex:none}
+  .unwirezone.show{display:block; animation:rise .2s ease}
+  .unwirezone.over{background:rgba(255,75,92,.28); box-shadow:inset 0 0 18px rgba(255,75,92,.45); color:#fff}
+
+  @media(max-width:1240px){ .stage{grid-template-columns:250px minmax(0,1fr) 262px} }
+  @media(max-width:980px){ .rail{display:none} .stage{grid-template-columns:1fr} .strip{grid-column:1} .hub{grid-column:1} .hub .reactor svg{width:min(60vh,330px); height:min(60vh,330px)} }
+
+  .comms{flex:1; display:flex; flex-direction:column; min-height:0;}
+  #chat{flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column;}
+  .thread{display:flex; flex-direction:column; gap:12px; flex:1; min-height:0}
+  .msg{max-width:88%; padding:10px 14px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; word-wrap:break-word; position:relative; animation:rise .25s ease}
+  @keyframes rise{from{opacity:0; transform:translateY(6px)}to{opacity:1}}
+  .msg .who{font-family:var(--mono); font-size:9.5px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; color:var(--dim)}
+  .msg.user{align-self:flex-end; text-align:right; border-right:2px solid var(--cy2); padding-right:14px;}
+  .msg.user .who{color:var(--cy2)}
+  .msg.assistant{align-self:flex-start; border-left:2px solid var(--cy); background:linear-gradient(90deg,rgba(28,230,255,.07),transparent); padding-left:14px;}
+  .msg.assistant .who{color:var(--cy); text-shadow:var(--glow)}
+  /* rendered markdown inside assistant replies */
+  .mdbody{white-space:normal}
+  .mdbody p{margin:0 0 8px} .mdbody p:last-child{margin-bottom:0}
+  .mdbody ul,.mdbody ol{margin:4px 0 9px; padding-left:20px} .mdbody li{margin:2px 0}
+  .mdbody ul{list-style:none} .mdbody ul li{position:relative}
+  .mdbody ul li::before{content:'▸'; color:var(--cy); position:absolute; left:-15px}
+  .mdbody ol li::marker{color:var(--cy); font-family:var(--mono); font-size:12px}
+  .mdbody strong{color:#eaffff; font-weight:600}
+  .mdbody em{color:var(--cy); font-style:italic}
+  .mdbody code{font-family:var(--mono); font-size:12.5px; background:rgba(28,230,255,.1); border:1px solid var(--line); border-radius:3px; padding:1px 5px; color:#bff4ff}
+  .mdbody a{color:var(--cy); text-decoration:underline; text-underline-offset:2px}
+  .mdbody .mdh{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--cy); margin:10px 0 5px; text-shadow:var(--glow)}
+  .mdbody .mdh:first-child{margin-top:0}
+  .mdbody table{border-collapse:collapse; margin:6px 0 10px; width:100%; font-size:13px}
+  .mdbody th,.mdbody td{border:1px solid var(--line2); padding:5px 9px; text-align:left; vertical-align:top}
+  .mdbody th{font-family:var(--mono); font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--cy); background:rgba(28,230,255,.07)}
+  .mdbody tbody tr:nth-child(even){background:rgba(28,230,255,.035)}
+  .prog{align-self:flex-start; font-family:var(--mono); font-size:12px; color:var(--dim); letter-spacing:1px; opacity:.9}
+  .prog::before{content:"› "}
+  .a2a{align-self:center; font-family:var(--mono); font-size:11px; letter-spacing:.4px; color:var(--dim); display:flex; gap:7px; align-items:center; padding:4px 13px; border:1px solid rgba(28,230,255,.16); border-radius:20px; background:rgba(8,22,38,.5); animation:rise .25s ease, a2apulse 1.4s ease;}
+  .a2a .aw{color:var(--cy); text-shadow:var(--glow)} .a2a .ar{color:var(--cy2); animation:flow 1.1s linear infinite} .a2a .am{color:var(--dim); opacity:.75; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  @keyframes flow{0%{opacity:.35;transform:translateX(-3px)}50%{opacity:1}100%{opacity:.35;transform:translateX(4px)}}
+  @keyframes a2apulse{0%{border-color:var(--cy); box-shadow:0 0 16px rgba(28,230,255,.5)}100%{border-color:rgba(28,230,255,.16); box-shadow:none}}
+  .cursor::after{content:"▋"; color:var(--cy); animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .approval{align-self:stretch; max-width:92%; border:1px solid var(--amber); background:rgba(40,28,4,.5); padding:13px 16px; clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%); box-shadow:0 0 18px rgba(255,176,32,.25)}
+  .approval h4{margin:0 0 8px; font-family:var(--mono); font-size:11px; letter-spacing:2px; color:var(--amber)}
+  .approval .r{font-size:13px; color:var(--text); margin:3px 0}
+  .approval .acts{margin-top:11px; display:flex; gap:10px}
+  .approval button{font-family:var(--mono); font-size:11px; letter-spacing:2px; cursor:pointer; padding:7px 16px; background:transparent; text-transform:uppercase; clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+  .approval .yes{color:var(--good); border:1px solid var(--good)}
+  .approval .no{color:var(--red); border:1px solid var(--red)}
+  .approval.done{opacity:.55; border-color:var(--line)}
+
+  .quick{display:flex; gap:8px; flex-wrap:wrap; padding:10px 16px 0;}
+  .chip{font-family:var(--mono); font-size:11px; letter-spacing:.5px; cursor:pointer; padding:6px 11px; background:rgba(8,22,38,.6); color:var(--cy); border:1px solid var(--line); border-radius:20px;}
+  .chip:hover{border-color:var(--cy); box-shadow:var(--glow); color:#eaffff}
+
+  .composer{display:flex; gap:10px; padding:10px 16px 14px; align-items:flex-end;}
+  #input{flex:1; resize:none; min-height:46px; max-height:150px; padding:12px 14px; background:rgba(2,12,22,.7); border:1px solid var(--line2); color:var(--text); font:inherit; font-size:14px;}
+  #input:focus{outline:none; box-shadow:var(--glow)}
+  #mic{font-size:18px; padding:0 14px; height:46px; cursor:pointer; background:transparent; color:var(--cy); border:1px solid var(--line2);}
+  #mic:hover{box-shadow:var(--glow)}
+  #mic.listening{color:var(--red); border-color:var(--red); box-shadow:0 0 16px rgba(255,75,92,.7); animation:micp 1s ease-in-out infinite}
+  @keyframes micp{50%{box-shadow:0 0 26px rgba(255,75,92,.95)}}
+  #send{font-family:var(--mono); letter-spacing:2px; padding:0 22px; height:46px; cursor:pointer; text-transform:uppercase; font-size:12px; background:linear-gradient(135deg,var(--cy),var(--cy2)); color:#021018; border:none; font-weight:700;}
+  #send:disabled{opacity:.45; cursor:default}
+
+  .tabs{display:flex; border-bottom:1px solid var(--line)}
+  .tab{flex:1; text-align:center; padding:9px; font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--dim); cursor:pointer; text-transform:uppercase; border-bottom:2px solid transparent}
+  .tab.active{color:var(--cy); border-bottom-color:var(--cy); text-shadow:var(--glow)}
+  .panel{flex:1; overflow-y:auto; padding:10px 12px;}
+  .node{display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid rgba(28,230,255,.1); border-left:2px solid transparent; transition:.2s; padding-left:8px;}
+  .node .st{width:7px;height:7px;border-radius:50%;background:#2c5168;box-shadow:none;flex:none; transition:.2s}
+  .node .info{flex:1; min-width:0}
+  .node .nm{font-family:var(--mono); font-size:12px; color:#9fc4d8; letter-spacing:.5px}
+  .node .pp{font-size:10.5px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .node select{background:rgba(2,12,22,.8); color:var(--cy); border:1px solid var(--line); font-family:var(--mono); font-size:11px; padding:2px 4px}
+  /* ACTIVE: the agent is working right now */
+  .node.active{border-left-color:var(--cy); background:linear-gradient(90deg,rgba(28,230,255,.14),transparent)}
+  .node.active .nm{color:#eaffff; text-shadow:var(--glow)}
+  .node.active .st{background:var(--cy); box-shadow:0 0 12px var(--cy); animation:stp 1s ease-in-out infinite}
+  @keyframes stp{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.55}}
+  /* COMM flash: agent is exchanging a message with another agent */
+  .node.comm{background:linear-gradient(90deg,rgba(20,136,255,.3),transparent); border-left-color:var(--cy2); animation:commflash .7s ease}
+  .node.comm .st{background:#eaffff; box-shadow:0 0 16px var(--cy2); animation:commdot .7s ease}
+  @keyframes commflash{0%{box-shadow:inset 0 0 22px rgba(28,230,255,.45)}100%{box-shadow:inset 0 0 0 transparent}}
+  @keyframes commdot{0%{transform:scale(2.1)}60%{transform:scale(1)}100%{transform:scale(1)}}
+  .logrow{font-family:var(--mono); font-size:11.5px; padding:6px 2px; border-bottom:1px solid rgba(28,230,255,.08); color:var(--dim)}
+  .logrow b{color:var(--text)} .logrow .t{color:var(--cy)}
+  .empty{font-family:var(--mono); font-size:12px; color:var(--dim); padding:14px 2px}
+  /* File vault */
+  .dropzone{border:1px dashed var(--line2); background:rgba(8,22,38,.4); text-align:center; padding:18px 12px; cursor:pointer; transition:.18s; margin-bottom:10px; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+  .dropzone:hover,.dropzone.over{border-color:var(--cy); background:rgba(28,230,255,.1); box-shadow:var(--glow)}
+  .dropzone.busy{opacity:.6; pointer-events:none}
+  .dropzone .dzicon{font-size:22px; color:var(--cy); line-height:1}
+  .dropzone .dztxt{font-family:var(--mono); font-size:12px; color:var(--text); margin:6px 0 4px; letter-spacing:.5px}
+  .dropzone small{font-family:var(--mono); font-size:9.5px; color:var(--dim); letter-spacing:.5px}
+  .frow{display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid rgba(28,230,255,.1)}
+  .frow .ficon{font-size:18px; width:24px; text-align:center; flex:none}
+  .frow .finfo{flex:1; min-width:0}
+  .frow .fnm{font-family:var(--mono); font-size:12px; color:#cdeefb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .frow .fmeta{font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:1px}
+  .frow .fbtn{background:transparent; border:1px solid var(--line2); color:var(--cy); cursor:pointer; width:26px; height:24px; font-size:13px; padding:0; flex:none; line-height:1}
+  .frow .fbtn:hover{box-shadow:var(--glow)}
+  .frow .fdel:hover{border-color:var(--red); color:var(--red); box-shadow:none}
+  .filescard{flex:1 1 0; min-height:130px; display:flex; flex-direction:column}
+  .filescard h3{justify-content:flex-start}
+  .filescard h3 .enc{margin-left:auto; font-size:8px; letter-spacing:1px; color:var(--good); text-shadow:0 0 8px var(--good)}
+  .filesbody{flex:1; min-height:0; overflow-y:auto; padding:10px 12px}
+  .vbar{display:flex; align-items:center; justify-content:center; gap:8px; cursor:grab; font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--cy); text-transform:uppercase; padding:7px; margin:0 12px; border:1px solid var(--line2); background:linear-gradient(90deg,rgba(28,230,255,.08),transparent); clip-path:polygon(6% 0,100% 0,94% 100%,0 100%)}
+  .vbar:hover{box-shadow:var(--glow); color:#eaffff}
+  .vbar:active{cursor:grabbing}
+  .vbar .grip{font-size:13px; letter-spacing:-2px}
+  /* full-screen file view */
+  .fileswrap{position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center}
+  .fileswrap[hidden]{display:none}
+  .fileswrap .filesview{position:relative; z-index:21; flex:none; width:min(820px,92%); height:min(74vh,640px); display:flex; flex-direction:column; box-shadow:0 0 60px rgba(28,230,255,.28); animation:popin .26s cubic-bezier(.2,.9,.3,1.15)}
+  .filestoolbar{display:flex; align-items:center; gap:12px; padding:10px 16px 0}
+  .filestoolbar #filesSearch{flex:1; background:rgba(8,22,38,.6); border:1px solid var(--line); color:#cdeefb; font-family:var(--mono); font-size:12px; padding:9px 12px; outline:none; transition:.15s; clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%)}
+  .filestoolbar #filesSearch:focus{border-color:var(--cy); box-shadow:var(--glow)}
+  .filestoolbar #filesSearch::placeholder{color:var(--dim)}
+  .filestoolbar .ftcount{font-family:var(--mono); font-size:10px; color:var(--dim); white-space:nowrap}
+  .filesgridwrap{flex:1; min-height:0; overflow-y:auto; padding:16px}
+  .filesgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px}
+  .ftile .ftthumb{width:100%; height:78px; object-fit:cover; margin-bottom:8px; border:1px solid var(--line); background:rgba(0,0,0,.3); display:block; clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+  .ftile{border:1px solid var(--line); background:rgba(8,22,38,.5); padding:14px 10px 10px; text-align:center; position:relative; transition:.15s; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+  .ftile:hover{border-color:var(--cy); box-shadow:var(--glow)}
+  .ftile .fticon{font-size:34px; line-height:1; margin-bottom:8px}
+  .ftile .ftname{font-family:var(--mono); font-size:11px; color:#cdeefb; word-break:break-word; line-height:1.3; min-height:28px}
+  .ftile .ftmeta{font-family:var(--mono); font-size:9px; color:var(--dim); margin-top:4px}
+  .ftile .ftacts{display:flex; gap:6px; justify-content:center; margin-top:9px}
+
+  #boot{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; transition:opacity .8s}
+  #boot .bt{font-family:var(--mono); font-size:34px; letter-spacing:14px; color:#eaffff; text-shadow:0 0 24px var(--cy); animation:flick 1.4s infinite}
+  #boot .bl{font-family:var(--mono); font-size:11px; letter-spacing:4px; color:var(--cy)}
+  #boot .bar{width:280px; height:3px; background:rgba(28,230,255,.15); overflow:hidden}
+  #boot .bar i{display:block; height:100%; width:0; background:var(--cy); box-shadow:var(--glow); animation:load 1.5s ease forwards}
+  @keyframes flick{0%,19%,21%,100%{opacity:1}20%{opacity:.4}}
+  @keyframes load{to{width:100%}}
+
+  ::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:rgba(28,230,255,.3)}
+  @media (max-width:1100px){.cols{grid-template-columns:1fr} .col.left,.col.right{display:none}}
+</style>
+</head>
+<body>
+  <div class="fx grid"></div><div class="fx scan"></div><div class="fx vig"></div>
+  <div class="brk tl"></div><div class="brk tr"></div><div class="brk bl"></div><div class="brk br"></div>
+
+  <div id="boot">
+    <div class="bt">J A R V I S</div>
+    <div class="bl">INITIALIZING CHIEF OF STAFF…</div>
+    <div class="bar"><i></i></div>
+  </div>
+
+  <div class="hud">
+    <div class="top">
+      <div>
+        <div class="title">J.A.R.V.I.S</div>
+        <div class="sub">Stark Industries // Chief of Staff</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="read">Brain<br><b id="brain">…</b></div>
+      <div class="read">Google<br><b id="gstat">—</b></div>
+      <div class="clock" id="clock">--:--:--</div>
+      <button class="iconbtn" id="ttsBtn" title="Toggle voice replies">🔊</button>
+      <button class="iconbtn" id="convoBtn" title="Hands-free conversation mode">🔁</button>
+      <button class="wakebtn" id="wakeBtn" title='Always-listening: say "Hey Jarvis" to activate (on-device, audio never leaves your PC)'><span class="wo" id="wakeOrb"></span>Hey&nbsp;Jarvis</button>
+      <button class="conn" id="connectBtn" style="display:none">Connect Google</button>
+      <button class="kbtn" id="killBtn">Kill Switch</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <!-- A2A transmission layer: glowing pulses fly between agents + the reactor -->
+      <svg class="fxlines" id="fxlines"><defs><filter id="glowf" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs></svg>
+      <!-- ── LEFT RAIL ── -->
+      <div class="rail railL">
+        <div class="card">
+          <h3>Diagnostics</h3>
+          <div class="diag">
+            <div class="scopewrap"><canvas id="scope" width="276" height="58"></canvas><span class="scopelbl">SIGNAL // 96kHz</span></div>
+            <div class="bars">
+              <div class="barcol"><canvas id="cpu" width="80" height="38"></canvas><span>CPU</span></div>
+              <div class="barcol"><canvas id="mem" width="80" height="38"></canvas><span>MEM</span></div>
+              <div class="barcol"><canvas id="net" width="80" height="38"></canvas><span>NET</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Core Load // 8 Threads</h3>
+          <div class="coreswrap"><canvas id="cores" width="256" height="74"></canvas></div>
+        </div>
+        <div class="card tabcard">
+          <div class="tabs">
+            <div class="tab active" data-tab="org">Agents</div>
+            <div class="tab" data-tab="memory">Memory</div>
+            <div class="tab" data-tab="activity">Activity</div>
+          </div>
+          <div class="panel" id="tab-org"></div>
+          <div class="panel" id="tab-memory" style="display:none"></div>
+          <div class="panel" id="tab-activity" style="display:none"></div>
+          <div class="unwirezone" id="unwirezone">⌫ drop here to remove from circuit</div>
+        </div>
+      </div>
+
+      <!-- ── TOP STRIP ── -->
+      <div class="strip stripT">
+        <div class="ro"><span>SAMPLE</span><b>96.0 kHz</b></div>
+        <div class="ro"><span>BITRATE</span><b>24-bit</b></div>
+        <div class="ro"><span>CHANNELS</span><b>7.1</b></div>
+        <div class="ro"><span>CORE TEMP</span><b id="roTemp">41°C</b></div>
+        <div class="ro"><span>THREADS</span><b id="roThreads">128</b></div>
+        <div class="ro"><span>UPLINK</span><b class="ok">● SECURE</b></div>
+        <div class="ro"><span>LATENCY</span><b id="roLat">12 ms</b></div>
+        <div class="ro"><span>GRID</span><b>17.4°N 78.5°E</b></div>
+      </div>
+
+      <!-- ── CENTRE: the arc reactor hub ── -->
+      <div class="hub" id="hub">
+        <div class="reactor" id="reactor" title="Tap to open comms">
+          <svg viewBox="0 0 240 240" aria-hidden="true">
+            <defs>
+              <radialGradient id="core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#f4ffff"/><stop offset="26%" stop-color="#9af0ff"/>
+                <stop offset="55%" stop-color="#1ce6ff"/><stop offset="100%" stop-color="#0a3a52" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="haze" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(28,230,255,.5)"/><stop offset="70%" stop-color="rgba(28,230,255,.05)"/><stop offset="100%" stop-color="rgba(28,230,255,0)"/>
+              </radialGradient>
+              <linearGradient id="coil" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d6fbff"/><stop offset="45%" stop-color="#1ce6ff"/><stop offset="100%" stop-color="#0b6f8c"/>
+              </linearGradient>
+            </defs>
+            <circle class="haze" cx="120" cy="120" r="118" fill="url(#haze)"/>
+            <g id="ticks"></g>
+            <circle class="ring r-out" cx="120" cy="120" r="112"/>
+            <circle class="ring r-mid" cx="120" cy="120" r="96"/>
+            <circle class="ring r-in"  cx="120" cy="120" r="80"/>
+            <g class="coils" id="segs"></g>
+            <circle class="coreback" cx="120" cy="120" r="50"/>
+            <circle class="core" cx="120" cy="120" r="44"/>
+            <polygon class="tri" id="tri" points="120,88 150,140 90,140"/>
+            <circle cx="120" cy="120" r="28" fill="none" stroke="#eaffff" stroke-width="1.2" opacity=".75"/>
+          </svg>
+        </div>
+        <div class="outbar"><span>OUTPUT</span><i><b id="outbar"></b></i><em id="outval">3.1 GW</em></div>
+        <button class="commsbtn" id="commsBtn"><span class="cdot"></span>OPEN COMMS CHANNEL</button>
+      </div>
+
+      <!-- ── BOTTOM STRIP ── -->
+      <div class="strip stripB">
+        <span class="sysline" id="sysline">ALL SYSTEMS NOMINAL</span>
+        <canvas id="eq" width="320" height="26"></canvas>
+        <span class="brand">STARK INDUSTRIES</span>
+      </div>
+
+      <!-- ── RIGHT RAIL ── -->
+      <div class="rail railR">
+        <div class="card clockcard">
+          <div class="bigclock" id="bigclock">--:--:--</div>
+          <div class="bigdate" id="bigdate">— · —</div>
+          <div class="clkmeta"><span id="tzlabel">LOCAL</span><span class="dot"></span><span id="upmeta">UPTIME 00:00</span></div>
+        </div>
+        <div class="card">
+          <h3>Local Conditions</h3>
+          <div class="wx" id="wx"><div class="wxload">◌ acquiring telemetry…</div></div>
+        </div>
+        <div class="card">
+          <h3>Network // Uplink</h3>
+          <div class="nettop"><span>▲ <b id="netUp">0.0</b> MB/s</span><span>▼ <b id="netDn">0.0</b> MB/s</span></div>
+          <div class="netwrap"><canvas id="nettraffic" width="276" height="56"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>System</h3>
+          <div class="gauges">
+            <div class="gauge"><div class="v" id="gAgents">23</div><div class="l">Agents</div></div>
+            <div class="gauge"><div class="v" id="gMem">0</div><div class="l">Memories</div></div>
+            <div class="gauge"><div class="v" id="gStatus" style="font-size:15px;padding-top:6px">ONLINE</div><div class="l">Status</div></div>
+            <div class="gauge"><div class="v" id="gActive" style="font-size:15px;padding-top:6px">IDLE</div><div class="l">Activity</div></div>
+          </div>
+        </div>
+        <div class="card filescard">
+          <h3>File Vault <span class="enc">🔒 ENCRYPTED · LOCAL</span></h3>
+          <div class="vbar" id="filesBar" draggable="true" title="Drag onto the reactor to view all files"><span class="grip">⠿</span> DRAG TO REACTOR → VIEW ALL</div>
+          <div class="filesbody" id="filespanel"></div>
+        </div>
+      </div>
+
+      <!-- ── Comms: hidden until tapped, then pops out over the reactor ── -->
+      <div class="chatwrap" id="chatwrap" hidden>
+        <div class="chatbackdrop" id="chatBackdrop"></div>
+        <div class="card comms">
+          <h3>Comms Channel<button class="xbtn" id="chatClose" title="Close (Esc)">✕</button></h3>
+          <div class="modebar" id="modebar" style="display:none"></div>
+          <div id="chat"></div>
+          <div class="quick" id="quick"></div>
+          <div class="composer">
+            <textarea id="input" placeholder="State an outcome, or press 🎤 to speak…"></textarea>
+            <button id="mic" title="Speak">🎤</button>
+            <button id="send">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── File Vault: full view, pops out over the reactor when the bar is dropped on it ── -->
+      <div class="fileswrap" id="fileswrap" hidden>
+        <div class="chatbackdrop" id="filesBackdrop"></div>
+        <div class="card filesview">
+          <h3>File Vault — All Files <span class="enc">🔒 ENCRYPTED · LOCAL</span><button class="xbtn" id="filesClose" title="Close (Esc)">✕</button></h3>
+          <div class="filestoolbar"><input id="filesSearch" placeholder="🔍  Search files…" autocomplete="off" spellcheck="false"><span class="ftcount" id="filesCount"></span></div>
+          <div class="filesgridwrap" id="filesgridwrap"><div class="filesgrid" id="filesgrid"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s);
+const chat=$('#chat'), input=$('#input'), sendBtn=$('#send'), reactor=$('#reactor');
+let busy=false; const nodeById={};
+
+// ── Comms pop-out: hidden by default, opens over the reactor on tap / when Jarvis speaks ──
+const chatwrap=$('#chatwrap');
+function openChat(){ if(chatwrap&&chatwrap.hidden){ chatwrap.hidden=false; setTimeout(()=>{try{input.focus()}catch{}},60); } }
+function closeChat(){ if(chatwrap) chatwrap.hidden=true; }
+function toggleChat(){ chatwrap&&(chatwrap.hidden?openChat():closeChat()); }
+$('#commsBtn')&&($('#commsBtn').onclick=openChat);
+reactor&&reactor.addEventListener('click',openChat);
+$('#chatClose')&&($('#chatClose').onclick=closeChat);
+$('#chatBackdrop')&&($('#chatBackdrop').onclick=closeChat);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&chatwrap&&!chatwrap.hidden) closeChat(); });
+
+// ── Arc-reactor build: coil ring + tick ring ──
+(()=>{
+  const C=120, P=(r,a)=>[C+r*Math.cos(a),C+r*Math.sin(a)];
+  const seg=$('#segs'); if(seg){ let h=''; const N=9, rin=54, rout=72, gap=7*Math.PI/180;
+    for(let i=0;i<N;i++){ const a0=i*2*Math.PI/N+gap/2, a1=(i+1)*2*Math.PI/N-gap/2;
+      const [x1,y1]=P(rin,a0),[x2,y2]=P(rout,a0),[x3,y3]=P(rout,a1),[x4,y4]=P(rin,a1);
+      h+=`<path d="M${x1} ${y1} L${x2} ${y2} A${rout} ${rout} 0 0 1 ${x3} ${y3} L${x4} ${y4} A${rin} ${rin} 0 0 0 ${x1} ${y1} Z" fill="url(#coil)" stroke="rgba(28,230,255,.55)" stroke-width=".7"/>`; }
+    seg.innerHTML=h; }
+  const tk=$('#ticks'); if(tk){ let h=''; for(let i=0;i<60;i++){ const a=i*6*Math.PI/180, big=i%5===0; const [x1,y1]=P(big?103:108,a),[x2,y2]=P(115,a); h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(28,230,255,${big?.7:.28})" stroke-width="${big?1.6:.8}"/>`; } tk.innerHTML=h; }
+})();
+
+// ── Live clocks (top + big right panel) + uptime ──
+const bootAt=performance.now();
+const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], DOW=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+function tick(){
+  const d=new Date(), t=d.toLocaleTimeString('en-GB');
+  const c=$('#clock'); if(c)c.textContent=t;
+  const bc=$('#bigclock'); if(bc)bc.textContent=t;
+  const bd=$('#bigdate'); if(bd)bd.textContent=`${DOW[d.getDay()]} · ${String(d.getDate()).padStart(2,'0')} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+  const tz=$('#tzlabel'); if(tz){try{tz.textContent=Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g,' ');}catch{}}
+  const up=$('#upmeta'); if(up){const s=Math.floor((performance.now()-bootAt)/1000); up.textContent=`UPTIME ${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s/60)%60).padStart(2,'0')}`;}
+}
+setInterval(tick,1000); tick();
+
+// ── Ambient telemetry: scope + bars + 8-core load + network graph + bottom EQ (decorative) ──
+(()=>{
+  const scope=$('#scope'), sctx=scope&&scope.getContext('2d');
+  const bars=['cpu','mem','net'].map(id=>{const c=$('#'+id);return c&&{ctx:c.getContext('2d'),c,hist:Array.from({length:24},()=>Math.random()*.5+.2),hue:id==='net'?'#33ffb0':'#1ce6ff'};}).filter(Boolean);
+  const coresC=$('#cores'), coresX=coresC&&coresC.getContext('2d'), coreV=Array.from({length:8},()=>Math.random()*.5+.2), coreT=coreV.slice();
+  const netC=$('#nettraffic'), netX=netC&&netC.getContext('2d'), upH=Array(60).fill(0), dnH=Array(60).fill(0);
+  const eqC=$('#eq'), eqX=eqC&&eqC.getContext('2d'), eqN=30, eqV=Array.from({length:eqN},()=>Math.random());
+  let ph=0, frame=0;
+  function draw(){
+    ph+=0.05; frame++;
+    if(sctx){const W=scope.width,H=scope.height; sctx.clearRect(0,0,W,H);
+      sctx.strokeStyle='rgba(28,230,255,.85)'; sctx.lineWidth=1.5; sctx.beginPath();
+      const amp=busy?H*0.36:H*0.2;
+      for(let x=0;x<W;x++){const k=x/W*Math.PI*6; const y=H/2+Math.sin(k+ph)*amp*Math.sin(k*0.5+ph*0.7)+(busy?Math.sin(k*4+ph*3)*4:0); if(x===0)sctx.moveTo(x,y);else sctx.lineTo(x,y);}
+      sctx.shadowColor='#1ce6ff'; sctx.shadowBlur=6; sctx.stroke(); sctx.shadowBlur=0;
+    }
+    if(frame%6===0){ for(const b of bars){ const target=busy?Math.random()*.5+.45:Math.random()*.4+.15; b.hist.push(b.hist[b.hist.length-1]*0.7+target*0.3); b.hist.shift(); } }
+    for(const b of bars){ const {ctx,c,hist,hue}=b; const W=c.width,H=c.height; ctx.clearRect(0,0,W,H); const bw=W/hist.length;
+      for(let i=0;i<hist.length;i++){const h=hist[i]*H; ctx.fillStyle=hue; ctx.globalAlpha=0.25+0.6*(i/hist.length); ctx.fillRect(i*bw,H-h,bw-1,h);} ctx.globalAlpha=1; }
+    if(coresX){ const W=coresC.width,H=coresC.height, n=coreV.length, gw=W/n; coresX.clearRect(0,0,W,H);
+      if(frame%5===0) for(let i=0;i<n;i++) coreT[i]=busy?Math.random()*.6+.35:Math.random()*.55+.12;
+      for(let i=0;i<n;i++){ coreV[i]+=(coreT[i]-coreV[i])*0.15; const h=coreV[i]*(H-4), x=i*gw+2, w=gw-4;
+        coresX.fillStyle='rgba(28,230,255,.1)'; coresX.fillRect(x,0,w,H);
+        const g=coresX.createLinearGradient(0,H,0,0); g.addColorStop(0,'#0b6f8c'); g.addColorStop(1,'#1ce6ff'); coresX.fillStyle=g; coresX.fillRect(x,H-h,w,h);
+        coresX.fillStyle='#eaffff'; coresX.fillRect(x,H-h-2,w,2); } }
+    if(netX){ const W=netC.width,H=netC.height;
+      if(frame%4===0){ const u=busy?Math.random()*.7+.25:Math.random()*.4+.05, d=busy?Math.random()*.8+.2:Math.random()*.5+.05;
+        upH.push(upH[upH.length-1]*.6+u*.4); upH.shift(); dnH.push(dnH[dnH.length-1]*.6+d*.4); dnH.shift();
+        const nu=$('#netUp'); if(nu)nu.textContent=(upH[upH.length-1]*9.9).toFixed(1); const nd=$('#netDn'); if(nd)nd.textContent=(dnH[dnH.length-1]*9.9).toFixed(1); }
+      netX.clearRect(0,0,W,H);
+      const area=(a,col)=>{ netX.beginPath(); netX.moveTo(0,H); for(let i=0;i<a.length;i++) netX.lineTo(i/(a.length-1)*W,H-a[i]*H); netX.lineTo(W,H); netX.closePath(); netX.fillStyle=col; netX.fill(); };
+      const line=(a,col)=>{ netX.beginPath(); for(let i=0;i<a.length;i++){ const x=i/(a.length-1)*W,y=H-a[i]*H; i?netX.lineTo(x,y):netX.moveTo(x,y);} netX.strokeStyle=col; netX.lineWidth=1.2; netX.stroke(); };
+      area(dnH,'rgba(28,230,255,.16)'); area(upH,'rgba(51,255,176,.14)'); line(dnH,'#1ce6ff'); line(upH,'#33ffb0'); }
+    if(eqX){ const W=eqC.width,H=eqC.height, bw=W/eqN; eqX.clearRect(0,0,W,H);
+      for(let i=0;i<eqN;i++){ const t=(busy?.5:.25)+Math.abs(Math.sin(ph*2+i*0.5))*(busy?.5:.3); eqV[i]+=(t-eqV[i])*0.3; const h=eqV[i]*H; eqX.globalAlpha=.45+.55*eqV[i]; eqX.fillStyle='#1ce6ff'; eqX.fillRect(i*bw,H-h,bw-1.5,h);} eqX.globalAlpha=1; }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+// ── Top-strip live readouts + rotating status line ──
+setInterval(()=>{
+  const set=(id,v)=>{const e=$('#'+id); if(e)e.textContent=v;};
+  set('roTemp',(38+Math.round(Math.random()*8)+(busy?6:0))+'°C');
+  set('roThreads', 96+Math.round(Math.random()*40)+(busy?40:0));
+  set('roLat',(8+Math.round(Math.random()*10))+' ms');
+}, 2000);
+const SYS=['ALL SYSTEMS NOMINAL','VAULT SEALED · AES-256-GCM','LOCAL-ONLY · ENCRYPTED','NEURAL LINK STABLE','GUARDIAN ACTIVE'];
+let _si=0; setInterval(()=>{ const e=$('#sysline'); if(e){ _si=(_si+1)%SYS.length; e.textContent=SYS[_si]; } }, 3800);
+
+// ── Weather panel (real data from /api/weather, refreshes every 10 min) ──
+async function loadWeather(){
+  const el=$('#wx'); if(!el)return;
+  try{
+    const r=await fetch('/api/weather'); const d=await r.json();
+    if(d.error||!d.now){ el.innerHTML='<div class="wxload">weather unavailable</div>'; return; }
+    const n=d.now, days=d.days||[];
+    const fc=days.slice(0,3).map((x,i)=>`<div><div class="d">${i===0?'TODAY':DOW[(new Date().getDay()+i)%7]}</div><div class="r">${x.minC}° / ${x.maxC}°</div></div>`).join('');
+    el.innerHTML=`
+      <div class="top2">
+        <div class="temp">${n.tempC}<sup>°C</sup></div>
+        <div class="cond"><div class="city">${esc(d.city)}</div>${esc(n.desc||'')}<br>Feels ${n.feelsLikeC}°</div>
+      </div>
+      <div class="met">
+        <div><span>Humidity</span><b>${n.humidity}%</b></div>
+        <div><span>Wind</span><b>${n.windKmph} km/h ${esc(n.windDir||'')}</b></div>
+        <div><span>Precip</span><b>${n.precipMM} mm</b></div>
+        <div><span>Visibility</span><b>${n.visKm} km</b></div>
+        <div><span>Pressure</span><b>${n.pressure} mb</b></div>
+        <div><span>UV Index</span><b>${n.uv}</b></div>
+      </div>
+      <div class="fc">${fc}</div>`;
+  }catch{ el.innerHTML='<div class="wxload">weather unavailable</div>'; }
+}
+loadWeather(); setInterval(loadWeather, 600000);
+
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const el=(cls,html)=>{const d=document.createElement('div');d.className=cls;if(html!=null)d.innerHTML=html;return d;};
+// Convert stray LaTeX tokens some models emit ($\rightarrow$, \times…) to plain Unicode.
+const deLatex=s=>String(s||'').replace(/\$?\\(?:rightarrow|to|longrightarrow|Rightarrow)\$?/g,'→').replace(/\$?\\(?:leftarrow|gets)\$?/g,'←').replace(/\$?\\(?:times|cdot)\$?/g,'×').replace(/\$?\\(?:leq|le)\$?/g,'≤').replace(/\$?\\(?:geq|ge)\$?/g,'≥').replace(/\\(?:text|mathrm)\{([^}]*)\}/g,'$1');
+// Plain text for the typewriter pass (strip markdown markers so no raw asterisks flash).
+const stripMd=s=>deLatex(String(s||'')).replace(/`{1,3}/g,'').replace(/\*\*|__/g,'').replace(/(^|\s)[*_](\S)/g,'$1$2').replace(/^\s{0,3}#{1,6}\s+/gm,'').replace(/^\s*[-*•]\s+/gm,'• ').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+// Minimal, SAFE markdown→HTML: escape first (model output is untrusted), then format.
+function mdToHtml(src){
+  const inline=s=>esc(s)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(m,t,u)=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${t}<\/a>`)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/__([^_]+)__/g,'<strong>$1</strong>')
+    .replace(/\*\*([^*]+)$/,'<strong>$1</strong>')   // unclosed bold to end of line
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\*\*|__/g,'');                          // drop any orphan bold markers
+  const lines=deLatex(String(src||'')).replace(/\r/g,'').split('\n');
+  const isRow=l=>/\|/.test(l), isSep=l=>/\|/.test(l)&&/^[\s:|-]*-[\s:|-]*$/.test(l), cells=l=>l.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(c=>c.trim());
+  let html='',list=null; const close=()=>{if(list){html+=`</${list}>`;list=null;}};
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].replace(/\s+$/,''); let m;
+    if(!line.trim()){close();continue;}
+    if(isRow(line)&&i+1<lines.length&&isSep(lines[i+1])){ // GFM table
+      close(); const head=cells(line); i+=2; let body='';
+      while(i<lines.length&&lines[i].trim()&&isRow(lines[i])){ const c=cells(lines[i]); body+='<tr>'+c.map(x=>`<td>${inline(x)}</td>`).join('')+'</tr>'; i++; }
+      i--; html+=`<table><thead><tr>${head.map(x=>`<th>${inline(x)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`; continue;
+    }
+    if(m=line.match(/^\s*#{1,6}\s+(.*)$/)){close();html+=`<div class="mdh">${inline(m[1])}</div>`;continue;}
+    if(m=line.match(/^\s*(?:[-*•])\s+(.*)$/)){if(list!=='ul'){close();html+='<ul>';list='ul';}html+=`<li>${inline(m[1])}</li>`;continue;}
+    if(m=line.match(/^\s*\d+[.)]\s+(.*)$/)){if(list!=='ol'){close();html+='<ol>';list='ol';}html+=`<li>${inline(m[1])}</li>`;continue;}
+    close();html+=`<p>${inline(line)}</p>`;
+  }
+  close(); return html;
+}
+const scroll=()=>chat.scrollTop=chat.scrollHeight;
+
+// ── voice OUTPUT (TTS) ──
+let ttsOn=localStorage.getItem('tts')!=='0', voices=[], convoMode=false;
+function loadVoices(){try{voices=speechSynthesis.getVoices()}catch{}}
+if(window.speechSynthesis){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+// Prefer a natural-sounding voice (Microsoft/Google "Natural" online voices) over the robotic default.
+function pickVoice(){const v=voices;return v.find(x=>/Natural/i.test(x.name)&&/^en/i.test(x.lang))||v.find(x=>/Google (UK English Male|US English)/i.test(x.name))||v.find(x=>/en-GB/i.test(x.lang)&&/(male|daniel|george|ryan|guy)/i.test(x.name))||v.find(x=>/^en/i.test(x.lang))||v[0];}
+function speak(text,onDone){
+  if(!ttsOn||!window.speechSynthesis||!text){if(onDone)onDone();return;}
+  const clean=text.replace(/https?:\/\/\S+/g,'link').replace(/[*_#`>|~\[\]]/g,'').replace(/\s+/g,' ').trim().slice(0,700);
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(clean);u.rate=1.04;u.pitch=1;const v=pickVoice();if(v)u.voice=v;u.onend=()=>{if(onDone)onDone()};u.onerror=()=>{if(onDone)onDone()};speechSynthesis.speak(u);}catch{if(onDone)onDone();}
+}
+$('#ttsBtn').onclick=()=>{ttsOn=!ttsOn;localStorage.setItem('tts',ttsOn?'1':'0');const b=$('#ttsBtn');b.textContent=ttsOn?'🔊':'🔇';b.classList.toggle('off',!ttsOn);if(!ttsOn)try{speechSynthesis.cancel()}catch{};};
+$('#ttsBtn').textContent=ttsOn?'🔊':'🔇'; $('#ttsBtn').classList.toggle('off',!ttsOn);
+$('#convoBtn').onclick=()=>{convoMode=!convoMode;$('#convoBtn').classList.toggle('on',convoMode);if(convoMode){addProg("🔁 Conversation mode ON — I'll keep listening after each reply. Tap 🔁 again to stop.");startRecording().catch(()=>{});}else{try{stopRecording()}catch{}}};
+
+function addMsg(role,text,type,who){
+  const m=el('msg '+role); m.appendChild(el('who', who || (role==='user'?'Sir':'J.A.R.V.I.S')));
+  const body=document.createElement('div'); m.appendChild(body); activeThread().appendChild(m); scroll();
+  if(role==='assistant'&&(type==='type'||type==='md')){ body.className='mdbody'; typeOut(body,text); if(type==='type') speak(text,()=>{ if(convoMode&&!busy&&!recording) startRecording().catch(()=>{}); else if(wakeOn&&!recording&&!convoMode) startWakeListener().catch(()=>{}); }); } else body.textContent=text;
+  return m;
+}
+function typeOut(node,text){
+  const plain=stripMd(text); const render=()=>{node.innerHTML=mdToHtml(text);node.classList.remove('cursor');scroll();};
+  node.classList.add('cursor');
+  if(plain.length>600){node.textContent=plain;render();return;}
+  let i=0;(function go(){node.textContent=plain.slice(0,i);scroll();if(i<plain.length){i+=Math.max(1,Math.round(plain.length/280));setTimeout(go,8);}else{render();}})();
+}
+function addProg(t){const p=el('prog',esc(t));activeThread().appendChild(p);scroll();return p;}
+
+function addApproval(a){
+  openChat(); // an approval needs your eyes — surface the comms panel
+  const c=el('approval'); c.dataset.id=a.id;
+  c.innerHTML=`<h4>⚠ APPROVAL REQUIRED</h4><div class="r"><b>${esc(a.agent)}</b> requests <b>${esc(a.tool)}</b> · ${esc(a.sensitivity)}</div><div class="r">${esc(a.preview)}</div><div class="r">Reversible: ${a.reversible?'yes':'<span style="color:var(--red)">NO</span>'}</div><div class="acts"><button class="yes">✅ Approve</button><button class="no">❌ Deny</button></div>`;
+  c.querySelector('.yes').onclick=()=>decide(a.id,true); c.querySelector('.no').onclick=()=>decide(a.id,false);
+  activeThread().appendChild(c); scroll(); speak('Approval required: '+a.agent+' wants to '+a.tool);
+}
+function decide(id,decision){fetch('/api/approve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,decision})});}
+function markApproval(id,decision){const c=chat.querySelector(`.approval[data-id="${id}"]`);if(!c)return;c.classList.add('done');const a=c.querySelector('.acts');if(a)a.innerHTML=decision?'<span style="color:var(--good);font-family:var(--mono)">✅ APPROVED</span>':'<span style="color:var(--red);font-family:var(--mono)">❌ DENIED</span>';}
+
+async function send(text){
+  const msg=(text??input.value).trim(); if(!msg||busy)return;
+  openChat(); // surface the conversation (covers voice/wake-word commands)
+  // Pick the mode: wired circuit (≥2 agents) → direct line (1 agent) → auto (Chief of Staff).
+  const mode = wired.size>=2 ? 'wire' : (directAgent ? 'direct' : 'auto');
+  const body = {message:msg};
+  if(mode==='wire') body.agents=[...wired];
+  else if(mode==='direct') body.agentId=directAgent;
+  const directWho = mode==='direct' ? nm(directAgent) : undefined;
+  input.value=''; addMsg('user',msg);
+  busy=true; sendBtn.disabled=true; reactor.classList.add('busy'); $('#gActive').textContent='WORKING'; $('#gActive').style.color='var(--amber)';
+  const think=addProg(mode==='wire'?'⚡ wiring agents…':'processing…');
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    const data=await r.json(); think.remove();
+    if(mode==='wire') addProg(data.answer||'done'); // each agent's turn already streamed in via the 'turn' event
+    else addMsg('assistant',data.answer||'(no response)','type',directWho);
+  }catch(e){think.remove();addMsg('assistant','⚠️ '+e.message);}
+  busy=false; sendBtn.disabled=false; reactor.classList.remove('busy'); clearActive(); $('#gActive').textContent='IDLE'; $('#gActive').style.color='#eaffff'; input.focus(); refreshState();
+}
+sendBtn.onclick=()=>send();
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+// ── voice INPUT — ON-DEVICE Whisper + auto-stop (works in Brave; audio NEVER leaves your PC) ──
+let asrLoading=null, asrPipe=null, mediaRec=null, chunks=[], recording=false, vadTimer=null, vadCtx=null;
+async function ensureASR(){
+  if(asrPipe) return asrPipe;
+  if(!asrLoading){
+    addProg('🎤 Loading local voice model (one-time ~75MB download, then fully offline)…');
+    asrLoading=(async()=>{
+      const t=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      t.env.allowLocalModels=false;
+      const pipe=await t.pipeline('automatic-speech-recognition','Xenova/whisper-base.en');
+      addProg('🎤 Voice ready — just speak; I stop listening automatically when you pause.');
+      return pipe;
+    })().catch(e=>{asrLoading=null; addProg('Voice model failed to load: '+e.message); throw e;});
+  }
+  asrPipe=await asrLoading; return asrPipe;
+}
+function stopVAD(){if(vadTimer){clearInterval(vadTimer);vadTimer=null;}if(vadCtx){try{vadCtx.close()}catch{};vadCtx=null;}}
+function stopRecording(){if(recording){recording=false;stopVAD();try{mediaRec&&mediaRec.stop()}catch{}}}
+async function startRecording(){
+  if(recording)return;
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  mediaRec=new MediaRecorder(stream); chunks=[];
+  mediaRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  mediaRec.onstop=async()=>{
+    stream.getTracks().forEach(t=>t.stop()); $('#mic').classList.remove('listening'); stopVAD();
+    try{
+      const buf=await new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'}).arrayBuffer();
+      if(buf.byteLength<1400) return; // nothing / too short
+      const ctx=new (window.AudioContext||window.webkitAudioContext)({sampleRate:16000});
+      const dec=await ctx.decodeAudioData(buf); ctx.close();
+      addProg('Transcribing…');
+      const pipe=await ensureASR();
+      const out=await pipe(dec.getChannelData(0));
+      const text=(out.text||'').replace(/\[[^\]]*\]/g,'').trim();
+      if(text && !/^(you|thanks?\.?|thank you\.?|bye\.?|\.)$/i.test(text)){ input.value=text; send(); }
+      else { if(!convoMode) addProg("(didn't catch that — try again)"); if(wakeOn&&!convoMode) startWakeListener().catch(()=>{}); }
+    }catch(e){ addProg('Transcription error: '+e.message); }
+  };
+  mediaRec.start(); recording=true; $('#mic').classList.add('listening');
+  // Voice-activity detection: auto-stop ~1.3s after you stop talking.
+  try{
+    vadCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=vadCtx.createMediaStreamSource(stream), an=vadCtx.createAnalyser(); an.fftSize=512; src.connect(an);
+    const d=new Uint8Array(an.fftSize); let spoke=false,silence=0; const t0=performance.now();
+    vadTimer=setInterval(()=>{
+      an.getByteTimeDomainData(d); let s=0; for(const v of d){const x=v-128;s+=x*x;} const rms=Math.sqrt(s/d.length); const now=performance.now();
+      if(rms>7){spoke=true;silence=0;} else if(spoke){ if(!silence)silence=now; else if(now-silence>1300) stopRecording(); }
+      if(!spoke && now-t0>4500) stopRecording();   // no speech → give up (ends a convo turn)
+      if(now-t0>15000) stopRecording();            // hard cap
+    },110);
+  }catch{}
+}
+$('#mic').onclick=async()=>{
+  if(recording){ stopRecording(); return; }
+  if(wakeListening) stopWakeListener(); // release the wake mic before grabbing a command stream
+  try{speechSynthesis.cancel()}catch{}
+  ensureASR().catch(()=>{}); // warm up the model in the background
+  try{ await startRecording(); }
+  catch(e){ addProg('🎤 Mic blocked — allow microphone for this site (address-bar icon), then retry. ('+e.message+')'); }
+};
+
+// ── WAKE WORD "Hey Jarvis" — always-listening, fully on-device (audio never leaves your PC) ──
+// Cheap VAD gates the mic; only short utterances get transcribed by the already-loaded Whisper
+// model and matched against the wake phrase. On a match we chime, release the mic, and capture
+// your command. To avoid self-triggering, listening pauses while Jarvis is speaking/working.
+let wakeOn=localStorage.getItem('wake')==='1', wakeStream=null, wakeCtx=null, wakeProc=null, wakeListening=false, wakeBusy=false;
+const WAKE_RE=/\b(?:hey|hi|ok|okay|yo|hello)?\s*(?:jarvis|jarvís|jervis|javis|jervais|jarvi[sz]|travis|charvis|garvis|harvis)\b/i;
+function setWakeUI(){const b=$('#wakeBtn'),o=$('#wakeOrb');if(!b)return;b.classList.toggle('on',wakeOn);if(o){o.classList.toggle('armed',wakeListening&&wakeOn);if(!wakeListening)o.classList.remove('triggered');}}
+function chime(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(660,c.currentTime);o.frequency.exponentialRampToValueAtTime(1320,c.currentTime+0.16);g.gain.setValueAtTime(0.0001,c.currentTime);g.gain.exponentialRampToValueAtTime(0.22,c.currentTime+0.03);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.32);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.34);setTimeout(()=>{try{c.close()}catch{}},600);}catch{}}
+async function startWakeListener(){
+  if(wakeListening||recording) return;
+  ensureASR().catch(()=>{});
+  try{ wakeStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
+  catch(e){ wakeOn=false; localStorage.setItem('wake','0'); setWakeUI(); addProg('🎤 Allow the microphone (address-bar icon) to enable "Hey Jarvis".'); return; }
+  wakeListening=true; setWakeUI();
+  wakeCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const SR=wakeCtx.sampleRate;
+  const src=wakeCtx.createMediaStreamSource(wakeStream);
+  const proc=wakeCtx.createScriptProcessor(4096,1,1); wakeProc=proc;
+  let seg=[], speaking=false, voicedMs=0, silenceMs=0, pre=[];
+  proc.onaudioprocess=(e)=>{
+    if(!wakeListening) return;
+    const ch=e.inputBuffer.getChannelData(0), ms=ch.length/SR*1000;
+    let s=0; for(let i=0;i<ch.length;i++) s+=ch[i]*ch[i]; const rms=Math.sqrt(s/ch.length);
+    if(rms>0.014){ if(!speaking){ speaking=true; seg=pre.slice(); } speaking=true; silenceMs=0; voicedMs+=ms; seg.push(new Float32Array(ch)); }
+    else if(speaking){ silenceMs+=ms; seg.push(new Float32Array(ch));
+      if(silenceMs>420){ const utt=seg, v=voicedMs; seg=[]; speaking=false; voicedMs=0; silenceMs=0;
+        if(v>150 && v<2200 && !wakeBusy && !recording){ wakeBusy=true; checkWake(utt,SR).finally(()=>{wakeBusy=false;}); }
+      }
+      if(voicedMs>2600){ seg=[]; speaking=false; voicedMs=0; silenceMs=0; } // too long to be a wake word
+    } else { pre.push(new Float32Array(ch)); if(pre.length>3) pre.shift(); } // short pre-roll
+  };
+  const mute=wakeCtx.createGain(); mute.gain.value=0; src.connect(proc); proc.connect(mute); mute.connect(wakeCtx.destination);
+}
+function stopWakeListener(){
+  wakeListening=false;
+  try{ if(wakeProc){ wakeProc.onaudioprocess=null; wakeProc.disconnect(); } }catch{} wakeProc=null;
+  try{ wakeCtx&&wakeCtx.close(); }catch{} wakeCtx=null;
+  try{ wakeStream&&wakeStream.getTracks().forEach(t=>t.stop()); }catch{} wakeStream=null;
+  setWakeUI();
+}
+async function checkWake(segs,sr){
+  try{
+    let n=0; for(const a of segs) n+=a.length; const pcm=new Float32Array(n); let o=0; for(const a of segs){ pcm.set(a,o); o+=a.length; }
+    const pipe=await ensureASR();
+    let data=pcm;
+    if(sr!==16000){ // crude downsample to 16k for Whisper
+      const ratio=sr/16000, out=new Float32Array(Math.floor(pcm.length/ratio)); for(let i=0;i<out.length;i++) out[i]=pcm[Math.floor(i*ratio)]||0; data=out;
+    }
+    const res=await pipe(data);
+    const text=(res.text||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+    if(text && WAKE_RE.test(text)) onWake();
+  }catch{}
+}
+function onWake(){
+  if(recording) return;
+  const orb=$('#wakeOrb'); if(orb){orb.classList.add('triggered');}
+  stopWakeListener();
+  chime(); openChat(); // wake word → bring the comms panel forward
+  try{speechSynthesis.cancel()}catch{}
+  const p=addProg('✨ Yes, Sir — listening…');
+  setTimeout(()=>{ startRecording().catch(()=>{ if(wakeOn) startWakeListener().catch(()=>{}); }); }, 260);
+}
+$('#wakeBtn').onclick=async()=>{
+  wakeOn=!wakeOn; localStorage.setItem('wake', wakeOn?'1':'0'); setWakeUI();
+  if(wakeOn){ addProg('✨ "Hey Jarvis" armed — say it anytime and I\'ll wake up. (On-device; audio never leaves your PC.)'); await startWakeListener(); }
+  else { stopWakeListener(); addProg('"Hey Jarvis" wake word off.'); }
+};
+// Auto-arm on load if you turned it on before AND the mic is already granted (no surprise prompts).
+(async()=>{ try{ setWakeUI(); if(wakeOn && navigator.permissions){ const st=await navigator.permissions.query({name:'microphone'}); if(st.state==='granted') startWakeListener(); } }catch{} })();
+
+// ── quick actions ──
+const QUICK=[
+  ['📋 Brief',"Give me a short brief of what needs my attention today."],
+  ['📧 Email',"Triage my unread email and tell me which 3 matter most."],
+  ['📅 My week',"What's on my calendar this week?"],
+  ['🌤 Weather',"What's the weather today?"],
+  ['🔎 Research','Research '],['✍️ Draft','Draft an email to '],
+];
+(function(){const q=$('#quick');for(const [label,text] of QUICK){const b=document.createElement('button');b.className='chip';b.textContent=label;b.onclick=()=>{if(text.endsWith(' ')){input.value=text;input.focus();}else send(text);};q.appendChild(b);}})();
+
+// ── live events ──
+const ev=new EventSource('/api/events');
+ev.addEventListener('progress',e=>addProg(JSON.parse(e.data).text));
+ev.addEventListener('approval',e=>addApproval(JSON.parse(e.data)));
+ev.addEventListener('approval_resolved',e=>{const d=JSON.parse(e.data);markApproval(d.id,d.decision);});
+ev.addEventListener('state',e=>renderState(JSON.parse(e.data)));
+ev.addEventListener('agent',e=>{const d=JSON.parse(e.data);setActive(d.id,d.active);});
+ev.addEventListener('done',()=>{clearActive();});
+ev.addEventListener('a2a',e=>{const d=JSON.parse(e.data);addA2A(d.from,d.to,d.msg);flashComm(d.from);flashComm(d.to);arc(d.from,d.to);});
+ev.addEventListener('turn',e=>{const d=JSON.parse(e.data); addMsg('assistant', d.message, 'md', nm(d.id)); flashComm(d.id);}); // a wired agent's live contribution
+function setActive(id,on){const n=nodeById[id];if(n)n.classList.toggle('active',!!on);}
+function clearActive(){for(const id in nodeById)nodeById[id].classList.remove('active');}
+const agentNames={'chief-of-staff':'Chief of Staff'};
+function nm(id){return agentNames[id]||id;}
+
+// ── Three channels: COMMON (Chief routes all) · PERSONALISED (one agent) · CIRCUIT (wired team) ──
+// Each channel is its own thread inside #chat; we show one at a time so they stay separate.
+let directAgent=null; const wired=new Set();
+let convoKey='auto'; const threads={};
+function threadFor(key){
+  if(!threads[key]){ const t=el('thread'); t.dataset.convo=key;
+    if(key.startsWith('direct:')){ const id=key.slice(7); const i=el('prog'); i.textContent='› Private line to '+nm(id)+' — only this agent sees these messages, and it remembers your conversation.'; t.appendChild(i); }
+    else if(key==='wire'){ const i=el('prog'); i.textContent='› Circuit channel — wired agents collaborate here, turn by turn.'; t.appendChild(i); }
+    chat.appendChild(t); threads[key]=t;
+  }
+  return threads[key];
+}
+function activeThread(){ return threadFor(convoKey); }
+function switchConvo(key){ convoKey=key; threadFor(key); for(const k in threads) threads[k].style.display=(k===key?'':'none'); scroll(); }
+function setDirect(id){ directAgent = directAgent===id ? null : id; if(directAgent) wired.clear(); updateMode(); }
+function toggleWire(id){ if(wired.has(id)) wired.delete(id); else { wired.add(id); directAgent=null; } updateMode(); }
+// Drag one agent onto another → wire them into a circuit (with a celebratory pulse).
+function wireTogether(a,b){ if(a===b)return; directAgent=null; wired.add(a); wired.add(b); updateMode(); try{arc(a,b);}catch{} }
+// Drag an agent onto the REACTOR → open a direct line with it; drop on EMPTY list space → unwire it.
+reactor&&reactor.addEventListener('dragover',e=>{e.preventDefault();const hasFiles=[...(e.dataTransfer.types||[])].includes('Files');e.dataTransfer.dropEffect=hasFiles?'copy':'link';reactor.classList.add('dropon');});
+reactor&&reactor.addEventListener('dragleave',()=>reactor.classList.remove('dropon'));
+reactor&&reactor.addEventListener('drop',e=>{e.preventDefault();reactor.classList.remove('dropon');
+  // 1) Files dragged in from the OS → encrypt straight into the vault
+  if(e.dataTransfer.files&&e.dataTransfer.files.length){ [...e.dataTransfer.files].forEach(uploadFile); openFilesView(); return; }
+  const id=e.dataTransfer.getData('text/plain');
+  // 2) Plain text / a link dropped onto the core → route it as a command
+  const txt=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').trim();
+  if(id==='__files__'){ openFilesView(); }
+  else if(id&&nodeById[id]){ wired.clear(); directAgent=id; updateMode(); try{arc(id,'chief-of-staff');}catch{} }
+  else if(txt&&!nodeById[txt]){ input.value=txt; try{openChat();}catch{} input.focus(); }
+});
+// "Drag to unwire" drop zone — appears under the agent list while you drag during a circuit.
+(()=>{ const uz=$('#unwirezone'); if(!uz)return;
+  uz.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';uz.classList.add('over');});
+  uz.addEventListener('dragleave',()=>uz.classList.remove('over'));
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('over','show');const id=e.dataTransfer.getData('text/plain'); if(id&&wired.has(id)){ wired.delete(id); updateMode(); }});
+})();
+function updateMode(){
+  for(const k in nodeById){ nodeById[k].classList.toggle('direct', k===directAgent); nodeById[k].classList.toggle('wired', wired.has(k)); }
+  const key = wired.size ? 'wire' : (directAgent ? 'direct:'+directAgent : 'auto');
+  switchConvo(key);
+  const mb=$('#modebar'); if(!mb)return;
+  if(wired.size){
+    const names=[...wired].map(nm).join(' + ');
+    mb.className='modebar wire'; mb.style.display='';
+    mb.innerHTML=`⚡ CIRCUIT · ${esc(names)}${wired.size<2?' · wire one more':' · give them a joint task'} <button class="clr">clear</button>`;
+    mb.querySelector('.clr').onclick=()=>{ wired.clear(); updateMode(); };
+    input.placeholder = wired.size>=2 ? 'Give the wired agents a joint task…' : 'Wire one more agent, then give a task…';
+  } else if(directAgent){
+    mb.className='modebar'; mb.style.display='';
+    mb.innerHTML=`◉ DIRECT · ${esc(nm(directAgent))} <button class="clr">back to all</button>`;
+    mb.querySelector('.clr').onclick=()=>{ directAgent=null; updateMode(); };
+    input.placeholder = 'Message '+nm(directAgent)+' directly…';
+  } else {
+    mb.className='modebar'; mb.style.display='';
+    mb.innerHTML='● COMMON · Chief of Staff routes to all agents';
+    input.placeholder="State an outcome, or press 🎤 to speak…";
+  }
+}
+function addA2A(from,to,msg){const p=el('a2a',`<span class="aw">${esc(nm(from))}</span><span class="ar">⟶</span><span class="aw">${esc(nm(to))}</span>`+(msg?`<span class="am">${esc(msg.slice(0,58))}</span>`:''));activeThread().appendChild(p);scroll();}
+function flashComm(id){const n=nodeById[id];if(n){n.classList.remove('comm');void n.offsetWidth;n.classList.add('comm');setTimeout(()=>n.classList.remove('comm'),720);}}
+// Screen-centre of an agent node, or the reactor (for the Chief / off-screen nodes).
+function ptOf(id){
+  const n=nodeById[id]; if(n){ const r=n.getBoundingClientRect(); if(r.width>2 && r.bottom>60) return {x:r.left+r.width/2, y:r.top+r.height/2}; }
+  const rc=reactor.getBoundingClientRect(); return {x:rc.left+rc.width/2, y:rc.top+rc.height/2};
+}
+// Fly a glowing data-pulse along a curved beam from one agent to another (or the reactor).
+function arc(from,to){
+  const svg=$('#fxlines'); if(!svg||from===to) return;
+  const box=svg.getBoundingClientRect(), a=ptOf(from), b=ptOf(to);
+  const ax=a.x-box.left, ay=a.y-box.top, bx=b.x-box.left, by=b.y-box.top;
+  const dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, off=Math.min(150,len*0.28);
+  const mx=(ax+bx)/2 - dy/len*off, my=(ay+by)/2 + dx/len*off;
+  const d=`M${ax.toFixed(1)} ${ay.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`;
+  const ns='http://www.w3.org/2000/svg';
+  const wire = nodeById[from] && nodeById[to]; const col = wire ? '#7fd0ff' : '#1ce6ff';
+  const path=document.createElementNS(ns,'path'); path.setAttribute('class','fxbeam'); path.setAttribute('d',d); path.setAttribute('stroke',col); path.setAttribute('stroke-width','1.8');
+  svg.appendChild(path);
+  const L=path.getTotalLength(); path.style.setProperty('--len',L); path.style.strokeDasharray=L; path.style.strokeDashoffset=L; path.classList.add('draw');
+  const dot=document.createElementNS(ns,'circle'); dot.setAttribute('r','4.5'); dot.setAttribute('fill','#eaffff'); dot.setAttribute('filter','url(#glowf)');
+  const mo=document.createElementNS(ns,'animateMotion'); mo.setAttribute('dur','0.72s'); mo.setAttribute('path',d); mo.setAttribute('fill','freeze'); mo.setAttribute('keyTimes','0;1'); mo.setAttribute('calcMode','spline'); mo.setAttribute('keySplines','.4 0 .2 1');
+  dot.appendChild(mo); svg.appendChild(dot);
+  setTimeout(()=>{ path.style.transition='opacity .45s'; path.style.opacity='0'; dot.style.transition='opacity .3s'; dot.style.opacity='0'; setTimeout(()=>{path.remove();dot.remove();},470); }, 700);
+}
+
+async function refreshState(){try{renderState(await(await fetch('/api/state')).json());}catch{}}
+function renderState(s){
+  $('#brain').textContent=(s.brain||'').split(':').slice(0,2).join(':').split(' ')[0];
+  $('#gstat').textContent=s.google.connected?'LINKED':'OFFLINE'; $('#gstat').style.color=s.google.connected?'var(--good)':'var(--dim)';
+  $('#gAgents').textContent=s.agents.length; $('#gMem').textContent=s.memoryCount;
+  $('#gStatus').textContent=s.killed?'PAUSED':'ONLINE'; $('#gStatus').style.color=s.killed?'var(--red)':'var(--good)';
+  const k=$('#killBtn'); k.classList.toggle('active',s.killed); k.textContent=s.killed?'Resume':'Kill Switch';
+  $('#connectBtn').style.display=s.google.configured&&!s.google.connected?'':'none';
+  renderOrg(s.agents);
+}
+function renderOrg(agents){
+  const box=$('#tab-org'); const wasActive=Object.keys(nodeById).filter(id=>nodeById[id].classList.contains('active'));
+  box.innerHTML=''; for(const k in nodeById)delete nodeById[k];
+  for(const a of agents){
+    const n=el('node'); n.dataset.agent=a.id; nodeById[a.id]=n; agentNames[a.id]=a.name; n.title='Click for a direct line · drag onto another agent to wire them together';
+    let opts=''; for(let i=0;i<=a.ceiling;i++)opts+=`<option value="${i}" ${i===a.autonomy?'selected':''}>L${i}</option>`;
+    n.innerHTML=`<span class="st"></span><div class="info"><div class="nm">${esc(a.name)}</div><div class="pp">${esc(a.purpose)}</div></div><button class="wire" title="Wire into a circuit to collaborate">⛓</button><select title="autonomy level">${opts}</select>`;
+    n.onclick=e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='OPTION'||e.target.closest('.wire'))return; setDirect(a.id);};
+    n.querySelector('.wire').onclick=e=>{e.stopPropagation(); toggleWire(a.id);};
+    n.querySelector('select').onchange=e=>fetch('/api/autonomy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agentId:a.id,level:Number(e.target.value)})});
+    // ── drag-and-drop wiring ──
+    n.draggable=true;
+    n.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain',a.id); e.dataTransfer.effectAllowed='link'; n.classList.add('dragging'); const uz=$('#unwirezone'); if(uz&&wired.size)uz.classList.add('show'); });
+    n.addEventListener('dragend',()=>{ n.classList.remove('dragging'); for(const k in nodeById)nodeById[k].classList.remove('droptarget'); const uz=$('#unwirezone'); if(uz)uz.classList.remove('show','over'); });
+    n.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='link'; if(!n.classList.contains('dragging'))n.classList.add('droptarget'); });
+    n.addEventListener('dragleave',()=>n.classList.remove('droptarget'));
+    n.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); n.classList.remove('droptarget'); const src=e.dataTransfer.getData('text/plain'); if(src) wireTogether(src,a.id); });
+    if(wasActive.includes(a.id))n.classList.add('active');
+    if(a.id===directAgent)n.classList.add('direct'); if(wired.has(a.id))n.classList.add('wired');
+    box.appendChild(n);
+  }
+}
+$('#killBtn').onclick=async()=>{await fetch('/api/kill',{method:'POST',headers:{'content-type':'application/json'}});refreshState();};
+$('#connectBtn').onclick=async()=>{addProg('opening Google sign-in…');await fetch('/api/connect',{method:'POST',headers:{'content-type':'application/json'}});};
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  for(const nm of ['org','memory','activity'])$('#tab-'+nm).style.display=nm===t.dataset.tab?'':'none';
+  if(t.dataset.tab==='memory')loadMemory(); if(t.dataset.tab==='activity')loadAudit();
+});
+// ── Encrypted file vault ──
+function fmtSize(n){ return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB'; }
+function loadFiles(){
+  const b=$('#filespanel'); if(!b)return;
+  b.innerHTML=`<div class="dropzone" id="dropzone"><input type="file" id="fileInput" multiple hidden><div class="dzicon">⬆</div><div class="dztxt">Drop files here, or click to upload</div><small>max 8 MB each · never leaves your PC</small></div><div id="filelist"></div>`;
+  const dz=$('#dropzone'), fi=$('#fileInput');
+  dz.onclick=()=>fi.click();
+  fi.onchange=()=>{ [...fi.files].forEach(uploadFile); fi.value=''; };
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');[...e.dataTransfer.files].forEach(uploadFile);});
+  renderFiles();
+}
+async function renderFiles(){
+  const list=$('#filelist'); if(!list)return;
+  try{
+    const {files}=await(await fetch('/api/files')).json();
+    list.innerHTML = files.length ? '' : '<div class="empty">No files yet — drop one above.</div>';
+    for(const f of files){
+      const row=el('frow');
+      row.innerHTML=`<div class="ficon">${fileGlyph(f.type,f.name)}</div><div class="finfo"><div class="fnm">${esc(f.name)}</div><div class="fmeta">${fmtSize(f.size)} · ${new Date(f.date).toLocaleDateString('en-GB')}</div></div><button class="fbtn fdl" title="Download">⤓</button><button class="fbtn fdel" title="Delete">✕</button>`;
+      row.querySelector('.fdl').onclick=()=>{ const a=document.createElement('a'); a.href='/api/files/get?id='+encodeURIComponent(f.id); a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); };
+      row.querySelector('.fdel').onclick=async()=>{ if(!confirm('Delete "'+f.name+'"? This removes it permanently.'))return; await fetch('/api/files/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:f.id})}); renderFiles(); };
+      list.appendChild(row);
+    }
+  }catch{ list.innerHTML='<div class="empty">Couldn\'t load files.</div>'; }
+}
+function fileGlyph(type,name){ const n=(name||'').toLowerCase(); if(/^image\//.test(type)||/\.(png|jpe?g|gif|webp|svg)$/.test(n))return '🖼'; if(/pdf/.test(type)||/\.pdf$/.test(n))return '📕'; if(/\.(docx?|odt)$/.test(n)||/word/.test(type))return '📄'; if(/\.(xlsx?|csv)$/.test(n)||/sheet|excel/.test(type))return '📊'; if(/\.(zip|rar|7z|tar|gz)$/.test(n))return '🗜'; if(/^audio\//.test(type))return '🎵'; if(/^video\//.test(type))return '🎬'; return '📎'; }
+function uploadFile(file){
+  if(file.size>8*1024*1024){ const l=$('#filelist'); if(l)l.insertAdjacentHTML('afterbegin',`<div class="empty" style="color:var(--red)">⚠️ ${esc(file.name)} is too large (max 8 MB).</div>`); return; }
+  const dz=$('#dropzone'); if(dz)dz.classList.add('busy');
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const data=String(reader.result).split(',')[1]||'';
+    try{
+      const r=await fetch('/api/files',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,type:file.type,data})});
+      const j=await r.json(); if(j.error){ const l=$('#filelist'); if(l)l.insertAdjacentHTML('afterbegin',`<div class="empty" style="color:var(--red)">⚠️ ${esc(file.name)}: ${esc(j.error)}</div>`); }
+    }catch(e){ const l=$('#filelist'); if(l)l.insertAdjacentHTML('afterbegin',`<div class="empty" style="color:var(--red)">⚠️ upload failed</div>`); }
+    finally{ if(dz)dz.classList.remove('busy'); try{renderFiles();}catch{} if(fileswrap&&!fileswrap.hidden)try{renderFilesGrid();}catch{} }
+  };
+  reader.readAsDataURL(file);
+}
+// ── Drag the File-Vault bar onto the reactor → pop out ALL files in the centre ──
+$('#filesBar')&&$('#filesBar').addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain','__files__'); e.dataTransfer.effectAllowed='link'; });
+const fileswrap=$('#fileswrap');
+function openFilesView(){ try{closeChat();}catch{} if(fileswrap){ fileswrap.hidden=false; renderFilesGrid(); } }
+function closeFilesView(){ if(fileswrap)fileswrap.hidden=true; }
+$('#filesClose')&&($('#filesClose').onclick=closeFilesView);
+$('#filesBackdrop')&&($('#filesBackdrop').onclick=closeFilesView);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&fileswrap&&!fileswrap.hidden) closeFilesView(); });
+let _allFiles=[];
+function isImg(f){ return /^image\//.test(f.type||'')||/\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f.name||''); }
+function canPreview(f){ return isImg(f)||/pdf/i.test(f.type||'')||/\.pdf$/i.test(f.name||'')||/^(text\/|application\/json)/i.test(f.type||'')||/\.(txt|md|json|csv|log)$/i.test(f.name||''); }
+async function renderFilesGrid(){
+  const g=$('#filesgrid'); if(!g)return; g.innerHTML='<div class="empty">loading…</div>';
+  try{
+    const {files}=await(await fetch('/api/files')).json();
+    _allFiles=files||[];
+    drawFilesGrid();
+  }catch{ g.innerHTML='<div class="empty">Couldn\'t load files.</div>'; }
+}
+function drawFilesGrid(){
+  const g=$('#filesgrid'); if(!g)return;
+  const q=(($('#filesSearch')||{}).value||'').trim().toLowerCase();
+  const list=q?_allFiles.filter(f=>(f.name||'').toLowerCase().includes(q)):_allFiles;
+  const cnt=$('#filesCount'); if(cnt)cnt.textContent=_allFiles.length?(q?list.length+' / '+_allFiles.length:_allFiles.length+(_allFiles.length===1?' file':' files')):'';
+  if(!_allFiles.length){ g.innerHTML='<div class="empty">No files yet — drop one into the File Vault, or drop straight onto the reactor.</div>'; return; }
+  if(!list.length){ g.innerHTML='<div class="empty">No files match “'+esc(q)+'”.</div>'; return; }
+  g.innerHTML='';
+  for(const f of list){ const t=el('ftile');
+    const head=isImg(f)?`<img class="ftthumb" loading="lazy" src="/api/files/get?id=${encodeURIComponent(f.id)}&inline=1" alt="">`:`<div class="fticon">${fileGlyph(f.type,f.name)}</div>`;
+    const prev=canPreview(f)?`<button class="fbtn fopen" title="Preview">⛶</button>`:'';
+    t.innerHTML=`${head}<div class="ftname">${esc(f.name)}</div><div class="ftmeta">${fmtSize(f.size)} · ${new Date(f.date).toLocaleDateString('en-GB')}</div><div class="ftacts">${prev}<button class="fbtn fdl" title="Download">⤓</button><button class="fbtn fdel" title="Delete">✕</button></div>`;
+    const ob=t.querySelector('.fopen'); if(ob)ob.onclick=()=>window.open('/api/files/get?id='+encodeURIComponent(f.id)+'&inline=1','_blank','noopener');
+    t.querySelector('.fdl').onclick=()=>{ const a=document.createElement('a'); a.href='/api/files/get?id='+encodeURIComponent(f.id); a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); };
+    t.querySelector('.fdel').onclick=async()=>{ if(!confirm('Delete "'+f.name+'"?'))return; await fetch('/api/files/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:f.id})}); renderFilesGrid(); try{renderFiles();}catch{} };
+    g.appendChild(t);
+  }
+}
+$('#filesSearch')&&$('#filesSearch').addEventListener('input',drawFilesGrid);
+async function loadMemory(){const b=$('#tab-memory');b.innerHTML='<div class="empty">loading…</div>';const{memories}=await(await fetch('/api/memory')).json();b.innerHTML=memories.length?'':'<div class="empty">No memories yet.</div>';for(const m of memories)b.appendChild(el('logrow',`<span class="t">[${esc(m.layer)}]</span> <b>${esc(m.key)}</b>: ${esc(m.content)}`));}
+async function loadAudit(){const b=$('#tab-activity');b.innerHTML='<div class="empty">loading…</div>';const{entries}=await(await fetch('/api/audit')).json();b.innerHTML=entries.length?'':'<div class="empty">No activity logged.</div>';for(const e of entries){const t=new Date(e.ts).toLocaleTimeString('en-GB');b.appendChild(el('logrow',`<span class="t">${t}</span> ${esc(e.actor)} · ${esc(e.action)} · ${esc(e.status)}`));}}
+
+setTimeout(()=>{const b=$('#boot');b.style.opacity='0';setTimeout(()=>b.remove(),800);},1700);
+addMsg('assistant',"Good day, Sir. All systems online. State an outcome and I'll handle it — your inbox, calendar, research, drafting, and more. Press the mic to speak, or tap a quick action below.");
+refreshState(); loadFiles(); setTimeout(()=>input.focus(),1800);
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Local data — NEVER commit. Your memory, audit log, and encrypted vault live here.
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Secrets
+.env
+.env.local
+*.key
+
+# Build / editor
+dist/
+.DS_Store
+*.log
+.weblog.txt
+.weberr.txt
