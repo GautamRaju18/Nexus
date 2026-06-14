@@ -84,7 +84,7 @@ export class GeminiProvider implements LLMProvider {
       const body = await res.text();
       if (res.status === 429) {
         throw new Error(
-          "Gemini quota exhausted (429). This key has no/low free-tier quota — get a valid key (format AIzaSy…) at https://aistudio.google.com/apikey, or set JARVIS_LLM_PROVIDER=ollama.",
+          "Gemini quota exhausted (429). This key has no/low free-tier quota — get a valid key (format AIzaSy…) at https://aistudio.google.com/apikey, or set NEXUS_LLM_PROVIDER=ollama.",
         );
       }
       throw new Error(`Gemini chat failed (${res.status}): ${body.slice(0, 200)}`);
@@ -131,7 +131,7 @@ export class OpenRouterProvider implements LLMProvider {
         authorization: `Bearer ${this.cfg.openrouterApiKey}`,
         "content-type": "application/json",
         "HTTP-Referer": "http://127.0.0.1:4321",
-        "X-Title": "Jarvis",
+        "X-Title": "Nexus",
       },
       body: JSON.stringify({ model: this.cfg.openrouterModel, messages, temperature: 0.4 }),
     });

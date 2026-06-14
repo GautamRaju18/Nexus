@@ -1,6 +1,6 @@
 /**
  * Multi-turn conversation test — reproduces the "weather → city follow-up" thread
- * from the screenshot to prove Jarvis now carries context across turns.
+ * from the screenshot to prove Nexus now carries context across turns.
  * Run: npm run convotest
  */
 import { bootstrap } from "../src/core/bootstrap";
@@ -30,7 +30,7 @@ async function run(): Promise<void> {
       history: history.slice(-8),
       onProgress: (m) => console.log("   ·", m),
     });
-    console.log(`JARVIS ▸ ${ans}\n`);
+    console.log(`NEXUS ▸ ${ans}\n`);
     history.push({ role: "user", content: turn }, { role: "assistant", content: ans });
   }
 

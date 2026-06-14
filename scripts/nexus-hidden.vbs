@@ -1,10 +1,10 @@
-' Launches the Jarvis web cockpit with NO visible console window.
-' Self-locating: works regardless of where the jarvis folder lives.
+' Launches the Nexus web cockpit with NO visible console window.
+' Self-locating: works regardless of where the nexus folder lives.
 ' Used by the auto-start shortcut (see install-autostart.ps1).
 
 Set fso = CreateObject("Scripting.FileSystemObject")
-scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)   ' ...\jarvis\scripts
-root = fso.GetParentFolderName(scriptDir)                     ' ...\jarvis
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)   ' ...\nexus\scripts
+root = fso.GetParentFolderName(scriptDir)                     ' ...\nexus
 
 Set sh = CreateObject("WScript.Shell")
 sh.CurrentDirectory = root

@@ -1,5 +1,5 @@
 /**
- * Web cockpit — a local GUI for Jarvis. Runs an HTTP server bound to 127.0.0.1
+ * Web cockpit — a local GUI for Nexus. Runs an HTTP server bound to 127.0.0.1
  * (loopback only) and serves a single-page UI plus a small JSON API. Approvals are
  * pushed live to the browser over Server-Sent Events and resolved via POST /api/approve.
  *
@@ -22,7 +22,7 @@ import { AutonomyLevel, type ApprovalRequest, type Approver, type LLMMessage } f
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const UI_PATH = join(HERE, "..", "..", "public", "index.html");
-const PORT = Number(process.env.JARVIS_WEB_PORT ?? 4321);
+const PORT = Number(process.env.NEXUS_WEB_PORT ?? 4321);
 const HOST = "127.0.0.1";
 
 // ── Server-Sent Events hub ────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ function json(res: ServerResponse, code: number, obj: unknown, headers: Record<s
   res.writeHead(code, { "content-type": "application/json", ...headers });
   res.end(JSON.stringify(obj));
 }
-const SESSION_COOKIE = "jarvis_session";
+const SESSION_COOKIE = "nexus_session";
 /** Parse the request's Cookie header into a name→value map. */
 function parseCookies(req: IncomingMessage): Record<string, string> {
   const out: Record<string, string> = {};
@@ -258,16 +258,45 @@ async function main(): Promise<void> {
 
       if (method === "GET" && path === "/api/state") return json(res, 200, state(userId));
       if (method === "GET" && path === "/api/memory") return json(res, 200, { memories: rt.memory.list(undefined, userId).slice(0, 100) });
+      // Save a memory directly (used by the Drop Dock's "remember" action).
+      if (method === "POST" && path === "/api/memory") {
+        const body = await readJson(req).catch(() => ({}));
+        const content = String(body.content ?? "").trim();
+        if (!content) return json(res, 400, { error: "empty memory" });
+        const key = String(body.key ?? content.slice(0, 40)).trim() || "note";
+        const id = await rt.scope(userId).memory.remember({ layer: "semantic", key, content, source: "dropped by user" });
+        return json(res, 200, { ok: true, id });
+      }
       if (method === "GET" && path === "/api/audit") return json(res, 200, { entries: rt.audit.recent(50, userId) });
 
-      // Replay a user's persisted transcript (survives refresh AND server restart).
+      // ── Conversations (multi-chat for the main channel) ──
+      if (method === "GET" && path === "/api/conversations") {
+        return json(res, 200, { conversations: rt.conversations.listConversations(userId) });
+      }
+      if (method === "POST" && path === "/api/conversations") {
+        const convo = rt.conversations.createConversation(userId);
+        return json(res, 200, convo);
+      }
+      if (method === "POST" && path === "/api/conversations/delete") {
+        const body = await readJson(req).catch(() => ({}));
+        return json(res, 200, { ok: rt.conversations.deleteConversation(String(body.id ?? ""), userId) });
+      }
+      if (method === "POST" && path === "/api/conversations/rename") {
+        const body = await readJson(req).catch(() => ({}));
+        return json(res, 200, { ok: rt.conversations.renameConversation(String(body.id ?? ""), userId, String(body.title ?? "")) });
+      }
+
+      // Replay a transcript (survives refresh AND server restart). By conversation id for the
+      // main channel; falls back to a scope (e.g. a direct line) when no id is given.
       if (method === "GET" && path === "/api/history") {
+        const conversation = url.searchParams.get("conversation");
+        if (conversation) return json(res, 200, { messages: rt.conversations.messagesOf(conversation, userId, 200) });
         const scope = (url.searchParams.get("scope") || "main").slice(0, 60);
         return json(res, 200, { messages: rt.conversations.history(userId, scope, 200) });
       }
 
       if (method === "GET" && path === "/api/weather") {
-        const city = (url.searchParams.get("city") || process.env.JARVIS_HOME_CITY || "Hyderabad").slice(0, 60);
+        const city = (url.searchParams.get("city") || process.env.NEXUS_HOME_CITY || "Hyderabad").slice(0, 60);
         try {
           const r = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`, {
             headers: { "user-agent": "curl/8" },
@@ -349,6 +378,9 @@ async function main(): Promise<void> {
         // Optional targeting: a single agent (direct line) or a list (wired circuit).
         const agentId = typeof body.agentId === "string" ? body.agentId : undefined;
         const agents = Array.isArray(body.agents) ? body.agents.map((x: unknown) => String(x)) : undefined;
+        // Which main conversation this belongs to (multi-chat). May be empty/unknown — we
+        // resolve or create one when persisting so a turn is never lost.
+        let conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
         const services = rt.scope(userId); // this user's isolated stores
         let answer = "";
         // Every live event is targeted to THIS user's clients only.
@@ -360,21 +392,28 @@ async function main(): Promise<void> {
           userId,
           services,
         };
+        // Persist to a SPECIFIC main conversation; create one if the id is missing/not theirs.
+        const saveMain = (agent?: string) => {
+          if (!conversationId || !rt.conversations.appendTo(conversationId, userId, message, answer, agent)) {
+            conversationId = rt.conversations.createConversation(userId).id;
+            rt.conversations.appendTo(conversationId, userId, message, answer, agent);
+          }
+        };
         // Serialize chats so two overlapping requests can't interleave persisted turns.
         await (chatQueue = chatQueue
           .then(async () => {
             if (agents && agents.length >= 2) {
               answer = await orch.runWired(agents, message, cb); // turns surface live via onTurn
-              rt.conversations.appendTurn(userId, "main", message, answer);
+              saveMain();
             } else if (agentId) {
               const scope = `direct:${agentId}`;
               const h = rt.conversations.recent(userId, scope, 8);
               answer = await orch.runDirect(agentId, message, { history: h, ...cb });
               rt.conversations.appendTurn(userId, scope, message, answer, agentId);
             } else {
-              const h = rt.conversations.recent(userId, "main", 8);
+              const h = conversationId ? rt.conversations.recentOf(conversationId, userId, 8) : [];
               answer = await orch.handle(message, { history: h, ...cb });
-              rt.conversations.appendTurn(userId, "main", message, answer);
+              saveMain();
             }
           })
           .catch((e) => {
@@ -384,7 +423,8 @@ async function main(): Promise<void> {
               : `⚠️ Something went wrong: ${m}`;
           })
           .finally(() => sse.send("done", {}, userId))); // clear any lingering active pulses
-        return json(res, 200, { answer });
+        // Return the conversation id so the client can track a freshly-created chat.
+        return json(res, 200, { answer, conversationId: agentId ? undefined : conversationId });
       }
 
       if (method === "POST" && path === "/api/approve") {
@@ -432,8 +472,8 @@ async function main(): Promise<void> {
   server.on("error", (e: any) => {
     if (e?.code === "EADDRINUSE") {
       // Already running (e.g. auto-start + a manual launch). Just open the existing one.
-      console.log(`Jarvis is already running on ${HOST}:${PORT} — opening it.`);
-      if (process.env.JARVIS_NO_OPEN !== "1") openBrowser(`http://${HOST}:${PORT}`);
+      console.log(`Nexus is already running on ${HOST}:${PORT} — opening it.`);
+      if (process.env.NEXUS_NO_OPEN !== "1") openBrowser(`http://${HOST}:${PORT}`);
       process.exit(0);
     }
     console.error(e);
@@ -442,9 +482,9 @@ async function main(): Promise<void> {
 
   server.listen(PORT, HOST, () => {
     const url = `http://${HOST}:${PORT}`;
-    console.log(`\n  ✦ Jarvis web cockpit → ${url}`);
+    console.log(`\n  ✦ Nexus web cockpit → ${url}`);
     console.log(`  brain: ${rt.llm.name} · agents: ${AGENTS.length}\n`);
-    if (process.env.JARVIS_NO_OPEN !== "1") openBrowser(url);
+    if (process.env.NEXUS_NO_OPEN !== "1") openBrowser(url);
   });
 
   // SSE keep-alive so proxies/browsers don't drop the stream.

@@ -28,7 +28,7 @@ import type { Approver, LLMProvider, ToolServices } from "../types";
 /** The default tenant for single-user surfaces (CLI/Telegram) and legacy data. */
 export const OWNER = "owner";
 
-export interface JarvisRuntime {
+export interface NexusRuntime {
   cfg: Config;
   db: DB;
   kv: KeyValue;
@@ -57,7 +57,7 @@ function startOfToday(): number {
   return d.getTime();
 }
 
-export function bootstrap(log: (msg: string) => void = () => {}): JarvisRuntime {
+export function bootstrap(log: (msg: string) => void = () => {}): NexusRuntime {
   const cfg = loadConfig();
   const db = openDb(cfg.dbPath);
   const kv = new KeyValue(db);

@@ -101,7 +101,7 @@ async function main(): Promise<void> {
       default:
         console.log(
           [
-            "Jarvis account manager — accounts are pre-seeded (no public sign-up).",
+            "Nexus account manager — accounts are pre-seeded (no public sign-up).",
             "",
             "  npm run user -- add <username>      create a login (prompts for a password)",
             "  npm run user -- list                list usernames",

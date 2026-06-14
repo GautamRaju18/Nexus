@@ -65,7 +65,7 @@ const csv = [
   "2026-06-05,Uber ride,-230,",
   "2026-06-06,Swiggy order,-300,",
 ].join("\n");
-const csvPath = join(tmpdir(), `jarvis_phase1_${Date.now()}.csv`);
+const csvPath = join(tmpdir(), `nexus_phase1_${Date.now()}.csv`);
 writeFileSync(csvPath, csv, "utf8");
 
 const ctx = fakeCtx("finance");

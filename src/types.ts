@@ -1,5 +1,5 @@
 /**
- * Core type contracts shared across the whole Jarvis organization.
+ * Core type contracts shared across the whole Nexus organization.
  *
  * The mental model: YOU are the CEO. The Chief of Staff (orchestrator) turns your
  * stated outcomes into a plan, delegates to specialist agents, and every action
@@ -103,7 +103,7 @@ export interface ToolDefinition<TInput = unknown> {
   /** Permission scopes this tool needs (e.g. "calendar", "email", "web"). */
   scopes: string[];
   /**
-   * True if this tool only touches Jarvis's own local store (memory, notes, kv)
+   * True if this tool only touches Nexus's own local store (memory, notes, kv)
    * and is fully reversible. Internal tools skip approval (still audited), since
    * they have no outward effect in your name.
    */

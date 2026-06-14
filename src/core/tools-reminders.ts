@@ -1,5 +1,5 @@
 /**
- * Reminder tools for the Secretary (and Chief of Staff). These write to Jarvis's
+ * Reminder tools for the Secretary (and Chief of Staff). These write to Nexus's
  * OWN local store, so they're `internal` (audited but never gated) — a reminder
  * is a note-to-self, not an outward action.
  *
@@ -46,7 +46,7 @@ export function reminderTools(): ToolDefinition[] {
     description:
       "Set a reminder/nudge. Input: { text, at? (ISO datetime), inMinutes? (number), recurrence? (hourly|daily|weekly) }. " +
       "Provide text plus EITHER an ISO `at` time OR `inMinutes`. Use recurrence for repeating nudges. " +
-      "Jarvis will surface the reminder when it's due.",
+      "Nexus will surface the reminder when it's due.",
     sensitivity: "write",
     internal: true,
     scopes: ["personal"],

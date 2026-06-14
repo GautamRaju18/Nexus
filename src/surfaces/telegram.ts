@@ -14,7 +14,7 @@
  * Run:  npm run telegram   (needs TELEGRAM_BOT_TOKEN in .env)
  */
 
-import { bootstrap, type JarvisRuntime } from "../core/bootstrap";
+import { bootstrap, type NexusRuntime } from "../core/bootstrap";
 import { AGENTS, AGENTS_BY_ID } from "../agents/specs";
 import { AutonomyLevel, type ApprovalRequest, type Approver, type LLMMessage } from "../types";
 import { splitChunks, parseCb } from "./telegram-util";
@@ -173,7 +173,7 @@ class TelegramApprover implements Approver {
 }
 
 // ── Remote commands (a useful subset of the CLI's) ────────────────────────────
-async function handleCommand(rt: JarvisRuntime, token: string, chatId: number, text: string, fromId: number): Promise<void> {
+async function handleCommand(rt: NexusRuntime, token: string, chatId: number, text: string, fromId: number): Promise<void> {
   const [cmd, ...rest] = text.slice(1).split(/\s+/);
   const reply = (m: string) => sendText(token, chatId, m);
 
@@ -181,7 +181,7 @@ async function handleCommand(rt: JarvisRuntime, token: string, chatId: number, t
     case "start":
     case "help":
       return reply(
-        "I'm Jarvis — your AI Chief of Staff. Just tell me an outcome:\n" +
+        "I'm Nexus — your AI Chief of Staff. Just tell me an outcome:\n" +
           "• check my unread email\n• what's on my calendar this week\n• schedule a focus block tomorrow 10am\n• research X and summarize\n\n" +
           "Commands: /brief /agents /memory /audit /autonomy /kill /google /id /help",
       );
@@ -272,7 +272,7 @@ async function main(): Promise<void> {
   // First run: start clean. Resume: keep any backlog (don't drop), so nothing is lost.
   await tg(token, "deleteWebhook", { drop_pending_updates: !savedOffset }).catch(() => {});
 
-  console.log(`\n  Jarvis on Telegram as @${me.username}`);
+  console.log(`\n  Nexus on Telegram as @${me.username}`);
   console.log(`  brain: ${rt.llm.name} · owner: ${ownerId ?? "(unset — first message shows the id to add)"}\n`);
 
   const approver = ownerId ? new TelegramApprover(token, ownerId, ownerId) : null;
@@ -349,12 +349,12 @@ async function main(): Promise<void> {
         await sendText(
           token,
           chatId,
-          `👋 I'm Jarvis. To activate me for your account only, add this to your .env and restart:\n\nTELEGRAM_OWNER_ID=${fromId}\n\nThis locks the bot to you.`,
+          `👋 I'm Nexus. To activate me for your account only, add this to your .env and restart:\n\nTELEGRAM_OWNER_ID=${fromId}\n\nThis locks the bot to you.`,
         );
         return;
       }
       if (fromId !== ownerId) {
-        await sendText(token, chatId, "Sorry — this Jarvis is private.");
+        await sendText(token, chatId, "Sorry — this Nexus is private.");
         return;
       }
 

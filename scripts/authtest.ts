@@ -3,7 +3,7 @@
  * sessions resolve/expire, and that two users CANNOT see each other's chat history,
  * long-term memory, or vault data.
  *
- * Run: JARVIS_MASTER_KEY=... JARVIS_DB_PATH=<temp> npm run authtest
+ * Run: NEXUS_MASTER_KEY=... NEXUS_DB_PATH=<temp> npm run authtest
  */
 import { bootstrap } from "../src/core/bootstrap";
 

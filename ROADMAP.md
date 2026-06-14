@@ -7,7 +7,7 @@ changes**. This is the path from "thin but real" to "full staff".
 
 ## How to add a capability (the only pattern you need)
 1. Write a tool in `src/core/tools.ts` (or a new file) — id, `sensitivity`, zod
-   `input`, `scopes`, `handler`. Mark it `internal: true` only if it touches Jarvis's
+   `input`, `scopes`, `handler`. Mark it `internal: true` only if it touches Nexus's
    own store.
 2. Add the tool id to the relevant agent(s) in `src/agents/specs.ts`.
 3. Done. The autonomy gate, approvals, and audit log apply automatically.

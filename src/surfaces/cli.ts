@@ -4,7 +4,7 @@
  *
  * Slash commands:
  *   /agents       list the org
- *   /memory       show what Jarvis remembers
+ *   /memory       show what Nexus remembers
  *   /audit        recent actions (the trust log)
  *   /autonomy     view / set an agent's autonomy dial
  *   /kill         engage/release the kill switch (pause all autonomy)
@@ -14,7 +14,7 @@
 
 import { createInterface, type Interface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { bootstrap, type JarvisRuntime } from "../core/bootstrap";
+import { bootstrap, type NexusRuntime } from "../core/bootstrap";
 import { AGENTS, AGENTS_BY_ID } from "../agents/specs";
 import { AutonomyLevel, type ApprovalRequest, type Approver, type LLMMessage } from "../types";
 
@@ -47,7 +47,7 @@ class CliApprover implements Approver {
 
 async function main(): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
-  let rt: JarvisRuntime;
+  let rt: NexusRuntime;
   try {
     rt = bootstrap((m) => console.log(c.dim(`  · ${m}`)));
   } catch (e) {
@@ -68,12 +68,12 @@ async function main(): Promise<void> {
     rl.prompt?.();
   }, "owner");
 
-  console.log(c.bold("\n  JARVIS") + c.dim("  — your local AI Chief of Staff"));
+  console.log(c.bold("\n  NEXUS") + c.dim("  — your local AI Chief of Staff"));
   console.log(c.dim(`  brain: ${rt.llm.name}   memories: ${rt.memory.count()}   agents: ${AGENTS.length}`));
   if (rt.policy.isKilled()) console.log(c.red("  ⚠ kill switch is ENGAGED — outward actions are paused (/kill to release)"));
   console.log(c.dim("  Type an outcome, or /help. Ctrl+C to exit.\n"));
 
-  // Rolling conversation history so Jarvis remembers the thread (e.g. a city you
+  // Rolling conversation history so Nexus remembers the thread (e.g. a city you
   // just named in answer to "which city?"). Trimmed when passed to the model.
   const history: LLMMessage[] = [];
 
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
         history: history.slice(-8),
         onProgress: (m) => console.log(c.dim(`  · ${m}`)),
       });
-      console.log(`\n${c.cyan("jarvis ▸")} ${answer}\n`);
+      console.log(`\n${c.cyan("nexus ▸")} ${answer}\n`);
       history.push({ role: "user", content: line }, { role: "assistant", content: answer });
     } catch (e) {
       console.log(c.red(`\n  Error: ${(e as Error).message}\n`));
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
   rl.close();
 }
 
-async function handleCommand(line: string, rt: JarvisRuntime, approver: Approver): Promise<boolean> {
+async function handleCommand(line: string, rt: NexusRuntime, approver: Approver): Promise<boolean> {
   const [cmd, ...rest] = line.slice(1).split(/\s+/);
   const arg = rest.join(" ");
 
@@ -153,7 +153,7 @@ async function handleCommand(line: string, rt: JarvisRuntime, approver: Approver
 
     case "memory": {
       const all = rt.memory.list();
-      if (all.length === 0) console.log(c.dim("  (no memories yet — tell Jarvis things to remember)"));
+      if (all.length === 0) console.log(c.dim("  (no memories yet — tell Nexus things to remember)"));
       for (const m of all.slice(0, 40)) {
         console.log(
           `  ${c.bold(`[${m.layer}]`)} ${m.key}: ${m.content} ${c.dim(`(conf ${m.confidence.toFixed(2)}, via ${m.source})`)}`,

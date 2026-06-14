@@ -3,7 +3,7 @@
  * is appended here: what, when, who, why, how reversible, and any cost. There is
  * deliberately no update() or delete(): the log is append-only ground truth.
  *
- * This is what makes it SAFE to grant Jarvis authority — nothing happens
+ * This is what makes it SAFE to grant Nexus authority — nothing happens
  * off-camera, and you can always answer "what did my staff do, and what did it cost?"
  */
 

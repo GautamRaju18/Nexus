@@ -9,7 +9,7 @@
 import { z } from "zod";
 
 const Schema = z.object({
-  masterKey: z.string().min(8, "JARVIS_MASTER_KEY must be at least 8 characters"),
+  masterKey: z.string().min(8, "NEXUS_MASTER_KEY must be at least 8 characters"),
   provider: z.enum(["auto", "ollama", "gemini", "openrouter"]).default("auto"),
 
   ollamaHost: z.string().default("http://127.0.0.1:11434"),
@@ -25,7 +25,7 @@ const Schema = z.object({
 
   telegramToken: z.string().default(""),
   telegramOwnerId: z.string().default(""),
-  dbPath: z.string().default("./data/jarvis.db"),
+  dbPath: z.string().default("./data/nexus.db"),
 
   googleClientId: z.string().default(""),
   googleClientSecret: z.string().default(""),
@@ -35,8 +35,8 @@ export type Config = z.infer<typeof Schema>;
 
 export function loadConfig(): Config {
   const parsed = Schema.safeParse({
-    masterKey: process.env.JARVIS_MASTER_KEY,
-    provider: process.env.JARVIS_LLM_PROVIDER?.trim(),
+    masterKey: process.env.NEXUS_MASTER_KEY,
+    provider: process.env.NEXUS_LLM_PROVIDER?.trim(),
     ollamaHost: process.env.OLLAMA_HOST?.trim(),
     ollamaModel: process.env.OLLAMA_MODEL?.trim(),
     ollamaEmbedModel: process.env.OLLAMA_EMBED_MODEL?.trim(),
@@ -47,7 +47,7 @@ export function loadConfig(): Config {
     openrouterModel: process.env.OPENROUTER_MODEL?.trim(),
     telegramToken: process.env.TELEGRAM_BOT_TOKEN?.trim(),
     telegramOwnerId: process.env.TELEGRAM_OWNER_ID?.trim(),
-    dbPath: process.env.JARVIS_DB_PATH?.trim(),
+    dbPath: process.env.NEXUS_DB_PATH?.trim(),
     // Trim credentials — a stray leading/trailing space in .env silently breaks OAuth.
     googleClientId: process.env.GOOGLE_CLIENT_ID?.trim(),
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim(),

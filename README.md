@@ -1,4 +1,4 @@
-# Jarvis
+# Nexus
 
 > A local-first AI **Chief of Staff**. An organization of 21 specialist agents that
 > you run as CEO. You state outcomes; the org does the work. Your data stays on your
@@ -22,14 +22,14 @@ npm install
 
 # 2. Configure
 cp .env.example .env
-#    → set JARVIS_MASTER_KEY to a long, unique passphrase (this encrypts your vault)
+#    → set NEXUS_MASTER_KEY to a long, unique passphrase (this encrypts your vault)
 
 # 3. Choose a brain (pick ONE):
 
 #    Option A — fully local & private (recommended). Install Ollama from ollama.com, then:
 ollama pull llama3.2            # the chat brain
 ollama pull nomic-embed-text   # embeddings, so memory recall is semantic
-#    (leave JARVIS_LLM_PROVIDER=auto with no GEMINI_API_KEY → uses Ollama)
+#    (leave NEXUS_LLM_PROVIDER=auto with no GEMINI_API_KEY → uses Ollama)
 
 #    Option B — Gemini free tier (higher quality, prompts go to Google):
 #    get a free key at https://aistudio.google.com/apikey and set GEMINI_API_KEY in .env
@@ -65,7 +65,7 @@ Slash commands:
 | Command | What it does |
 |---|---|
 | `/agents` | List the whole organization by department |
-| `/memory` | Show what Jarvis remembers (and where it learned it) |
+| `/memory` | Show what Nexus remembers (and where it learned it) |
 | `/audit` | Recent actions — the trust log |
 | `/autonomy [id] [0-5]` | View or set an agent's autonomy dial (capped at its ceiling) |
 | `/kill` | Engage/release the kill switch (pause all outward actions) |

@@ -75,7 +75,7 @@ export class GoogleAuth {
     const tok = await this.exchangeCode(code, verifier, redirectUri);
     if (!tok.refresh_token) {
       throw new Error(
-        "Google returned no refresh token. Remove Jarvis at myaccount.google.com/permissions and run /connect again.",
+        "Google returned no refresh token. Remove Nexus at myaccount.google.com/permissions and run /connect again.",
       );
     }
     this.vault.set(REFRESH_KEY, tok.refresh_token);
@@ -145,7 +145,7 @@ export class GoogleAuth {
           res.writeHead(200, { "content-type": "text/html" });
           res.end(
             "<html><body style='font-family:system-ui;padding:48px;text-align:center'>" +
-              "<h2>Jarvis is connected ✓</h2><p>You can close this tab and return to your terminal.</p></body></html>",
+              "<h2>Nexus is connected ✓</h2><p>You can close this tab and return to your terminal.</p></body></html>",
           );
           server.close();
           if (err) return reject(new Error(`Google authorization failed: ${err}`));

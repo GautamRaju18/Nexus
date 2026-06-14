@@ -59,7 +59,7 @@ export class PolicyEngine {
       return { decision: "allow", reason: "read-only" };
     }
 
-    // Internal, reversible writes to Jarvis's own store (memory/notes) — allowed
+    // Internal, reversible writes to Nexus's own store (memory/notes) — allowed
     // (and audited), since they have no outward effect in your name.
     if (tool.internal) {
       return { decision: "allow", reason: "internal reversible store write" };

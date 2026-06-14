@@ -1,6 +1,6 @@
 # Security & Trust Model
 
-Trust is the whole product. Jarvis is designed so that granting it authority is
+Trust is the whole product. Nexus is designed so that granting it authority is
 **safer than handing the same authority to a human assistant** — because every
 action is gated, logged, reversible-by-default, and pausable.
 
@@ -9,20 +9,20 @@ action is gated, logged, reversible-by-default, and pausable.
 ### 1. Secrets are encrypted at rest
 Every credential (LLM keys, future OAuth tokens, Telegram token) is stored
 **AES-256-GCM encrypted** in the `vault` table, under a key derived from your
-`JARVIS_MASTER_KEY` passphrase via **scrypt** (memory-hard). The passphrase itself
+`NEXUS_MASTER_KEY` passphrase via **scrypt** (memory-hard). The passphrase itself
 is never stored — only a check value to detect a wrong key. Plaintext secrets exist
 only transiently in memory while in use. See `src/core/security/`.
 
-> If you lose `JARVIS_MASTER_KEY`, the vault cannot be decrypted. That is by design.
+> If you lose `NEXUS_MASTER_KEY`, the vault cannot be decrypted. That is by design.
 
 ### 2. Your data never leaves the machine (with the local brain)
-With `JARVIS_LLM_PROVIDER=ollama`, prompts and memories are processed by a model
+With `NEXUS_LLM_PROVIDER=ollama`, prompts and memories are processed by a model
 running locally. Nothing is sent to any third party. If you choose Gemini, prompts
 go to Google's API — that is the one place data leaves; it's your explicit choice.
 
 ### 3. Full-disk encryption for the database file
 The SQLite file holds your memory and audit log in plaintext fields (so memory
-recall can work). For at-rest protection of the whole file, keep `D:\jarvis` on a
+recall can work). For at-rest protection of the whole file, keep `D:\nexus` on a
 **BitLocker-encrypted volume** (Windows 11 Pro/Home support this). Secrets are
 field-encrypted regardless, so even an unencrypted disk never exposes your tokens.
 

@@ -1,8 +1,8 @@
-# Removes the Jarvis auto-start shortcut from your Startup folder.
+# Removes the Nexus auto-start shortcut from your Startup folder.
 #   powershell -ExecutionPolicy Bypass -File scripts\uninstall-autostart.ps1
 
 $ErrorActionPreference = "Stop"
-$lnk = Join-Path ([Environment]::GetFolderPath("Startup")) "Jarvis.lnk"
+$lnk = Join-Path ([Environment]::GetFolderPath("Startup")) "Nexus.lnk"
 
 if (Test-Path $lnk) {
   Remove-Item $lnk -Force

@@ -1,6 +1,6 @@
 /**
  * Gmail + Google Calendar tools. These act on the user's OWN account via their
- * OAuth grant, so there is no third-party cost — Jarvis is automating the user.
+ * OAuth grant, so there is no third-party cost — Nexus is automating the user.
  *
  * Sensitivity drives the approval gate (see policy.ts):
  *   read  — gmail_list, gmail_read, gcal_list           → run freely (audited)

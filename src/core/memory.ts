@@ -1,5 +1,5 @@
 /**
- * Long-term memory — the thing that makes Jarvis feel like it KNOWS you rather
+ * Long-term memory — the thing that makes Nexus feel like it KNOWS you rather
  * than re-meeting you every session. Layered (identity / preference / episodic /
  * semantic / procedural / relationship), with embedding-based recall and a
  * keyword fallback when embeddings are unavailable.

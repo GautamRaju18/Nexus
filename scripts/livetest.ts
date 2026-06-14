@@ -1,10 +1,10 @@
 /**
  * Live end-to-end test — drives the real orchestrator with the configured LLM
  * brain through a few outcomes, then shows what landed in memory and the audit log.
- * Uses a throwaway DB + master key so your real ./data/jarvis.db stays pristine.
+ * Uses a throwaway DB + master key so your real ./data/nexus.db stays pristine.
  *
  * Run (PowerShell):
- *   $env:JARVIS_MASTER_KEY="livetest"; $env:JARVIS_DB_PATH="./data/livetest.db"; npm run livetest
+ *   $env:NEXUS_MASTER_KEY="livetest"; $env:NEXUS_DB_PATH="./data/livetest.db"; npm run livetest
  */
 import { bootstrap } from "../src/core/bootstrap";
 import type { Approver, ApprovalRequest } from "../src/types";
@@ -36,7 +36,7 @@ async function run(): Promise<void> {
     const t0 = Date.now();
     try {
       const answer = await orch.handle(p, (m) => console.log("   ·", m));
-      console.log(`\nJARVIS ▸ ${answer}`);
+      console.log(`\nNEXUS ▸ ${answer}`);
     } catch (e) {
       console.log(`\n[error] ${(e as Error).message}`);
     }

@@ -307,7 +307,7 @@ function buildSystemPrompt(
       : "(no tools licensed — answer from reasoning and memory)";
 
   return [
-    `You are the ${spec.name} at Jarvis, the user's personal AI organization. The user is your CEO.`,
+    `You are the ${spec.name} at Nexus, the user's personal AI organization. The user is your CEO.`,
     `Your job: ${spec.purpose}`,
     "",
     spec.systemPrompt,

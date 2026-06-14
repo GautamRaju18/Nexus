@@ -1,5 +1,5 @@
 /**
- * The encrypted secret vault. Every credential Jarvis holds — Gemini key, Google
+ * The encrypted secret vault. Every credential Nexus holds — Gemini key, Google
  * OAuth tokens, Telegram token, etc. — is stored here AES-256-GCM encrypted under
  * your master passphrase. Plaintext secrets exist only transiently in memory.
  *
@@ -11,7 +11,11 @@ import type { DB } from "../db";
 import { encrypt, decrypt } from "./crypto";
 
 const CHECK_KEY = "__vault_check__";
-const CHECK_PLAINTEXT = "jarvis-vault-ok";
+const CHECK_PLAINTEXT = "nexus-vault-ok";
+// Vaults created before the Jarvis→Nexus rebrand stored this sentinel. We still accept
+// it on unlock (then transparently re-stamp the new one) so existing vaults aren't
+// locked out by the rename. The master passphrase itself is unchanged.
+const LEGACY_CHECK_PLAINTEXT = "jarvis-vault-ok";
 
 export class Vault {
   constructor(
@@ -29,7 +33,14 @@ export class Vault {
 
     let ok = false;
     try {
-      ok = decrypt(existing, this.passphrase) === CHECK_PLAINTEXT;
+      const dec = decrypt(existing, this.passphrase);
+      if (dec === CHECK_PLAINTEXT) {
+        ok = true;
+      } else if (dec === LEGACY_CHECK_PLAINTEXT) {
+        // Correct passphrase, pre-rebrand sentinel — migrate it in place.
+        this.setRaw(CHECK_KEY, encrypt(CHECK_PLAINTEXT, this.passphrase));
+        ok = true;
+      }
     } catch {
       ok = false;
     }
@@ -42,7 +53,7 @@ export class Vault {
       return;
     }
     throw new Error(
-      "Vault unlock failed: wrong JARVIS_MASTER_KEY. Your encrypted secrets cannot be read with this passphrase.",
+      "Vault unlock failed: wrong NEXUS_MASTER_KEY. Your encrypted secrets cannot be read with this passphrase.",
     );
   }
 

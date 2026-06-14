@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>J.A.R.V.I.S</title>
+<title>N.E.X.U.S</title>
 <style>
   :root{
     --cy:#1ce6ff; --cy2:#1488ff; --cyd:#0a3a52; --amber:#ffb020; --red:#ff4b5c; --good:#33ffb0;
@@ -141,7 +141,9 @@
   .stage{position:relative; flex:1; display:grid; gap:10px; min-height:0;
     grid-template-columns:290px minmax(0,1fr) 304px;
     grid-template-rows:auto minmax(0,1fr) auto;}
-  .rail{display:flex; flex-direction:column; gap:10px; min-height:0; grid-row:1 / -1}
+  .rail{display:flex; flex-direction:column; gap:10px; min-height:0; grid-row:1 / -1; overflow-y:auto; overflow-x:hidden; padding-right:4px}
+  .rail::-webkit-scrollbar{width:7px} .rail::-webkit-scrollbar-thumb{background:rgba(28,230,255,.3); border-radius:4px} .rail::-webkit-scrollbar-track{background:transparent}
+  .rail{scrollbar-width:thin; scrollbar-color:rgba(28,230,255,.3) transparent}
   .railL{grid-column:1} .railR{grid-column:3}
   .rail > .card{flex:none}
   .rail .tabcard{flex:1 1 0; min-height:120px; display:flex; flex-direction:column}
@@ -354,6 +356,31 @@
   #login .lerr{font-family:var(--mono); font-size:11px; color:var(--red); min-height:14px; letter-spacing:.5px; text-align:center}
   .userchip{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--cy)}
   .userchip b{color:#eaffff; letter-spacing:1px}
+  /* Multi-chat: New/Chats buttons in the comms header + the chat list dropdown */
+  .comms h3 .convbtn{font-family:var(--mono); font-size:10px; letter-spacing:1px; background:rgba(28,230,255,.1); border:1px solid var(--line); color:var(--cy); padding:3px 9px; margin-left:8px; cursor:pointer; text-transform:uppercase; border-radius:2px}
+  .comms h3 .convbtn:hover{background:rgba(28,230,255,.22)}
+  .convlist{position:absolute; left:10px; right:10px; top:48px; z-index:30; max-height:62%; overflow-y:auto; background:rgba(4,14,26,.98); border:1px solid var(--line2); box-shadow:0 14px 44px rgba(0,0,0,.65); padding:6px}
+  .convitem{display:flex; align-items:center; gap:8px; padding:9px 10px; cursor:pointer; border-bottom:1px solid rgba(28,230,255,.08)}
+  .convitem:last-child{border-bottom:none}
+  .convitem:hover{background:rgba(28,230,255,.08)}
+  .convitem.active{background:rgba(28,230,255,.15)}
+  .convitem .ct{flex:1; font-size:13px; color:#dffaff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .convitem .cm{font-family:var(--mono); font-size:10px; color:var(--cy); opacity:.7}
+  .convitem .cdel{background:none; border:none; color:var(--red); cursor:pointer; font-size:13px; opacity:.55; line-height:1}
+  .convitem .cdel:hover{opacity:1}
+  .convempty{padding:16px; text-align:center; color:var(--cy); font-family:var(--mono); font-size:11px; opacity:.7}
+  /* Holo-Tray (Drop Dock): a universal staging surface you fling things into */
+  .dock{min-height:74px; max-height:190px; overflow-y:auto; border:1px dashed var(--line2); background:rgba(28,230,255,.03); padding:8px; display:flex; flex-direction:column; gap:6px; transition:box-shadow .15s,border-color .15s,background .15s}
+  .dock.dropon{border-color:var(--cy); border-style:solid; background:rgba(28,230,255,.12); box-shadow:inset 0 0 26px rgba(28,230,255,.25), var(--glow)}
+  .dockhint{font-family:var(--mono); font-size:10.5px; color:var(--cy); opacity:.6; text-align:center; padding:14px 6px; letter-spacing:.5px}
+  .chip2{display:flex; align-items:center; gap:7px; padding:6px 8px; background:rgba(8,22,38,.85); border:1px solid var(--line); animation:popin .2s ease}
+  .chip2 .g{font-size:14px}
+  .chip2 .cl{flex:1; font-size:12px; color:#dffaff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .chip2 .ca{background:rgba(28,230,255,.12); border:1px solid var(--line); color:var(--cy); cursor:pointer; font-size:11px; padding:2px 6px; border-radius:2px}
+  .chip2 .ca:hover{background:rgba(28,230,255,.28)}
+  .chip2 .ca.x{color:var(--red); border-color:rgba(255,60,60,.3)}
+  .msg{cursor:grab} .msg.dragging,.convitem.dragging{opacity:.45}
+  .node.acton{outline:2px solid var(--cy); outline-offset:2px; box-shadow:var(--glow)}
   @keyframes flick{0%,19%,21%,100%{opacity:1}20%{opacity:.4}}
   @keyframes load{to{width:100%}}
 
@@ -366,13 +393,13 @@
   <div class="brk tl"></div><div class="brk tr"></div><div class="brk bl"></div><div class="brk br"></div>
 
   <div id="boot">
-    <div class="bt">J A R V I S</div>
+    <div class="bt">N E X U S</div>
     <div class="bl">INITIALIZING CHIEF OF STAFF…</div>
     <div class="bar"><i></i></div>
   </div>
 
   <div id="login">
-    <div class="lt">J.A.R.V.I.S</div>
+    <div class="lt">N.E.X.U.S</div>
     <div class="ls">AUTHENTICATION REQUIRED</div>
     <form id="loginForm" autocomplete="on">
       <input id="luser" name="username" placeholder="username" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -385,7 +412,7 @@
   <div class="hud">
     <div class="top">
       <div>
-        <div class="title">J.A.R.V.I.S</div>
+        <div class="title">N.E.X.U.S</div>
         <div class="sub">Stark Industries // Chief of Staff</div>
       </div>
       <div class="spacer"></div>
@@ -394,7 +421,7 @@
       <div class="clock" id="clock">--:--:--</div>
       <button class="iconbtn" id="ttsBtn" title="Toggle voice replies">🔊</button>
       <button class="iconbtn" id="convoBtn" title="Hands-free conversation mode">🔁</button>
-      <button class="wakebtn" id="wakeBtn" title='Always-listening: say "Hey Jarvis" to activate (on-device, audio never leaves your PC)'><span class="wo" id="wakeOrb"></span>Hey&nbsp;Jarvis</button>
+      <button class="wakebtn" id="wakeBtn" title='Always-listening: say "Hey Nexus" to activate (on-device, audio never leaves your PC)'><span class="wo" id="wakeOrb"></span>Hey&nbsp;Nexus</button>
       <button class="conn" id="connectBtn" style="display:none">Connect Google</button>
       <button class="kbtn" id="killBtn">Kill Switch</button>
       <div class="userchip" id="userchip" style="display:none">⬡ <b id="uname">—</b><button class="iconbtn" id="logoutBtn" title="Log out">⎋</button></div>
@@ -491,6 +518,17 @@
           <div class="bigdate" id="bigdate">— · —</div>
           <div class="clkmeta"><span id="tzlabel">LOCAL</span><span class="dot"></span><span id="upmeta">UPTIME 00:00</span></div>
         </div>
+        <div class="card dockcard">
+          <h3>Holo-Tray <span class="enc">DRAG ANYTHING HERE</span></h3>
+          <div class="dock" id="dock">
+            <div class="dockhint" id="dockhint">⊹ Drag a message, a file, a chat, or text here to stage it.</div>
+          </div>
+        </div>
+        <div class="card filescard">
+          <h3>File Vault <span class="enc">🔒 ENCRYPTED · LOCAL</span></h3>
+          <div class="vbar" id="filesBar" draggable="true" title="Drag onto the reactor to view all files"><span class="grip">⠿</span> DRAG TO REACTOR → VIEW ALL</div>
+          <div class="filesbody" id="filespanel"></div>
+        </div>
         <div class="card">
           <h3>Local Conditions</h3>
           <div class="wx" id="wx"><div class="wxload">◌ acquiring telemetry…</div></div>
@@ -509,18 +547,18 @@
             <div class="gauge"><div class="v" id="gActive" style="font-size:15px;padding-top:6px">IDLE</div><div class="l">Activity</div></div>
           </div>
         </div>
-        <div class="card filescard">
-          <h3>File Vault <span class="enc">🔒 ENCRYPTED · LOCAL</span></h3>
-          <div class="vbar" id="filesBar" draggable="true" title="Drag onto the reactor to view all files"><span class="grip">⠿</span> DRAG TO REACTOR → VIEW ALL</div>
-          <div class="filesbody" id="filespanel"></div>
-        </div>
       </div>
 
       <!-- ── Comms: hidden until tapped, then pops out over the reactor ── -->
       <div class="chatwrap" id="chatwrap" hidden>
         <div class="chatbackdrop" id="chatBackdrop"></div>
         <div class="card comms">
-          <h3>Comms Channel<button class="xbtn" id="chatClose" title="Close (Esc)">✕</button></h3>
+          <h3>Comms Channel
+            <button class="convbtn" id="newChatBtn" title="Start a new chat">＋ New</button>
+            <button class="convbtn" id="chatsBtn" title="Your chats">🕘 Chats</button>
+            <button class="xbtn" id="chatClose" title="Close (Esc)">✕</button>
+          </h3>
+          <div class="convlist" id="convlist" hidden></div>
           <div class="modebar" id="modebar" style="display:none"></div>
           <div id="chat"></div>
           <div class="quick" id="quick"></div>
@@ -548,8 +586,10 @@
 const $=s=>document.querySelector(s);
 const chat=$('#chat'), input=$('#input'), sendBtn=$('#send'), reactor=$('#reactor');
 let busy=false; const nodeById={};
+let currentConvoId=null; // the active main conversation (multi-chat)
+const GREETING="Good day, Sir. All systems online. State an outcome and I'll handle it — your inbox, calendar, research, drafting, and more. Press the mic to speak, or tap a quick action below.";
 
-// ── Comms pop-out: hidden by default, opens over the reactor on tap / when Jarvis speaks ──
+// ── Comms pop-out: hidden by default, opens over the reactor on tap / when Nexus speaks ──
 const chatwrap=$('#chatwrap');
 function openChat(){ if(chatwrap&&chatwrap.hidden){ chatwrap.hidden=false; setTimeout(()=>{try{input.focus()}catch{}},60); } }
 function closeChat(){ if(chatwrap) chatwrap.hidden=true; }
@@ -712,9 +752,10 @@ $('#ttsBtn').textContent=ttsOn?'🔊':'🔇'; $('#ttsBtn').classList.toggle('off
 $('#convoBtn').onclick=()=>{convoMode=!convoMode;$('#convoBtn').classList.toggle('on',convoMode);if(convoMode){addProg("🔁 Conversation mode ON — I'll keep listening after each reply. Tap 🔁 again to stop.");startRecording().catch(()=>{});}else{try{stopRecording()}catch{}}};
 
 function addMsg(role,text,type,who){
-  const m=el('msg '+role); m.appendChild(el('who', who || (role==='user'?'Sir':'J.A.R.V.I.S')));
+  const m=el('msg '+role); m.appendChild(el('who', who || (role==='user'?'Sir':'N.E.X.U.S')));
   const body=document.createElement('div'); m.appendChild(body); activeThread().appendChild(m); scroll();
   if(role==='assistant'&&(type==='type'||type==='md')){ body.className='mdbody'; typeOut(body,text); if(type==='type') speak(text,()=>{ if(convoMode&&!busy&&!recording) startRecording().catch(()=>{}); else if(wakeOn&&!recording&&!convoMode) startWakeListener().catch(()=>{}); }); } else body.textContent=text;
+  try{ makeDraggable(m, ()=>({kind:'message', text:String(text||'')})); }catch{}
   return m;
 }
 function typeOut(node,text){
@@ -743,6 +784,7 @@ async function send(text){
   const body = {message:msg};
   if(mode==='wire') body.agents=[...wired];
   else if(mode==='direct') body.agentId=directAgent;
+  else body.conversationId=currentConvoId; // auto: persist into the active chat
   const directWho = mode==='direct' ? nm(directAgent) : undefined;
   input.value=''; addMsg('user',msg);
   busy=true; sendBtn.disabled=true; reactor.classList.add('busy'); $('#gActive').textContent='WORKING'; $('#gActive').style.color='var(--amber)';
@@ -750,6 +792,7 @@ async function send(text){
   try{
     const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
     const data=await r.json(); think.remove();
+    if(data.conversationId){ currentConvoId=data.conversationId; refreshConvList(); } // capture a freshly-created chat + retitle
     if(mode==='wire') addProg(data.answer||'done'); // each agent's turn already streamed in via the 'turn' event
     else addMsg('assistant',data.answer||'(no response)','type',directWho);
   }catch(e){think.remove();addMsg('assistant','⚠️ '+e.message);}
@@ -819,19 +862,19 @@ $('#mic').onclick=async()=>{
   catch(e){ addProg('🎤 Mic blocked — allow microphone for this site (address-bar icon), then retry. ('+e.message+')'); }
 };
 
-// ── WAKE WORD "Hey Jarvis" — always-listening, fully on-device (audio never leaves your PC) ──
+// ── WAKE WORD "Hey Nexus" — always-listening, fully on-device (audio never leaves your PC) ──
 // Cheap VAD gates the mic; only short utterances get transcribed by the already-loaded Whisper
 // model and matched against the wake phrase. On a match we chime, release the mic, and capture
-// your command. To avoid self-triggering, listening pauses while Jarvis is speaking/working.
+// your command. To avoid self-triggering, listening pauses while Nexus is speaking/working.
 let wakeOn=localStorage.getItem('wake')==='1', wakeStream=null, wakeCtx=null, wakeProc=null, wakeListening=false, wakeBusy=false;
-const WAKE_RE=/\b(?:hey|hi|ok|okay|yo|hello)?\s*(?:jarvis|jarvís|jervis|javis|jervais|jarvi[sz]|travis|charvis|garvis|harvis)\b/i;
+const WAKE_RE=/\b(?:hey|hi|ok|okay|yo|hello)?\s*(?:nexus|jarvís|jervis|javis|jervais|jarvi[sz]|travis|charvis|garvis|harvis)\b/i;
 function setWakeUI(){const b=$('#wakeBtn'),o=$('#wakeOrb');if(!b)return;b.classList.toggle('on',wakeOn);if(o){o.classList.toggle('armed',wakeListening&&wakeOn);if(!wakeListening)o.classList.remove('triggered');}}
 function chime(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(660,c.currentTime);o.frequency.exponentialRampToValueAtTime(1320,c.currentTime+0.16);g.gain.setValueAtTime(0.0001,c.currentTime);g.gain.exponentialRampToValueAtTime(0.22,c.currentTime+0.03);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.32);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.34);setTimeout(()=>{try{c.close()}catch{}},600);}catch{}}
 async function startWakeListener(){
   if(wakeListening||recording) return;
   ensureASR().catch(()=>{});
   try{ wakeStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
-  catch(e){ wakeOn=false; localStorage.setItem('wake','0'); setWakeUI(); addProg('🎤 Allow the microphone (address-bar icon) to enable "Hey Jarvis".'); return; }
+  catch(e){ wakeOn=false; localStorage.setItem('wake','0'); setWakeUI(); addProg('🎤 Allow the microphone (address-bar icon) to enable "Hey Nexus".'); return; }
   wakeListening=true; setWakeUI();
   wakeCtx=new (window.AudioContext||window.webkitAudioContext)();
   const SR=wakeCtx.sampleRate;
@@ -883,8 +926,8 @@ function onWake(){
 }
 $('#wakeBtn').onclick=async()=>{
   wakeOn=!wakeOn; localStorage.setItem('wake', wakeOn?'1':'0'); setWakeUI();
-  if(wakeOn){ addProg('✨ "Hey Jarvis" armed — say it anytime and I\'ll wake up. (On-device; audio never leaves your PC.)'); await startWakeListener(); }
-  else { stopWakeListener(); addProg('"Hey Jarvis" wake word off.'); }
+  if(wakeOn){ addProg('✨ "Hey Nexus" armed — say it anytime and I\'ll wake up. (On-device; audio never leaves your PC.)'); await startWakeListener(); }
+  else { stopWakeListener(); addProg('"Hey Nexus" wake word off.'); }
 };
 // Auto-arm on load if you turned it on before AND the mic is already granted (no surprise prompts).
 (async()=>{ try{ setWakeUI(); if(wakeOn && navigator.permissions){ const st=await navigator.permissions.query({name:'microphone'}); if(st.state==='granted') startWakeListener(); } }catch{} })();
@@ -1030,7 +1073,17 @@ function renderOrg(agents){
     n.addEventListener('dragend',()=>{ n.classList.remove('dragging'); for(const k in nodeById)nodeById[k].classList.remove('droptarget'); const uz=$('#unwirezone'); if(uz)uz.classList.remove('show','over'); });
     n.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='link'; if(!n.classList.contains('dragging'))n.classList.add('droptarget'); });
     n.addEventListener('dragleave',()=>n.classList.remove('droptarget'));
-    n.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); n.classList.remove('droptarget'); const src=e.dataTransfer.getData('text/plain'); if(src) wireTogether(src,a.id); });
+    n.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); n.classList.remove('droptarget','acton');
+      // Something staged/dragged onto an agent → that agent acts on it.
+      const nx=e.dataTransfer.getData('application/x-nexus');
+      if(nx){ try{ const p=JSON.parse(nx);
+        if(p.kind==='message'||p.kind==='text'){ sendToAgent(a.id, p.text); return; }
+        if(p.kind==='conversation'){ sendToAgent(a.id, 'Pick up this thread — "'+(p.title||'')+'" — and take it further.'); return; }
+      }catch{} }
+      const src=e.dataTransfer.getData('text/plain');
+      if(src && nodeById[src]){ wireTogether(src,a.id); return; }  // agent → agent = wire a circuit
+      if(src){ sendToAgent(a.id, src); }                            // text → agent = ask it directly
+    });
     if(wasActive.includes(a.id))n.classList.add('active');
     if(a.id===directAgent)n.classList.add('direct'); if(wired.has(a.id))n.classList.add('wired');
     box.appendChild(n);
@@ -1065,6 +1118,7 @@ async function renderFiles(){
     for(const f of files){
       const row=el('frow');
       row.innerHTML=`<div class="ficon">${fileGlyph(f.type,f.name)}</div><div class="finfo"><div class="fnm">${esc(f.name)}</div><div class="fmeta">${fmtSize(f.size)} · ${new Date(f.date).toLocaleDateString('en-GB')}</div></div><button class="fbtn fdl" title="Download">⤓</button><button class="fbtn fdel" title="Delete">✕</button>`;
+      try{ makeDraggable(row, ()=>({kind:'file', name:f.name, fileId:f.id})); }catch{}
       row.querySelector('.fdl').onclick=()=>{ const a=document.createElement('a'); a.href='/api/files/get?id='+encodeURIComponent(f.id); a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); };
       row.querySelector('.fdel').onclick=async()=>{ if(!confirm('Delete "'+f.name+'"? This removes it permanently.'))return; await fetch('/api/files/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:f.id})}); renderFiles(); };
       list.appendChild(row);
@@ -1133,28 +1187,65 @@ function showLogin(){ $('#login').classList.add('show'); setTimeout(()=>{try{$('
 function hideLogin(){ $('#login').classList.remove('show'); }
 // Instant (no typewriter/TTS) render of a stored assistant message during replay.
 function renderAssistant(text,who){
-  const m=el('msg assistant'); m.appendChild(el('who', who?nm(who):'J.A.R.V.I.S'));
+  const m=el('msg assistant'); m.appendChild(el('who', who?nm(who):'N.E.X.U.S'));
   const body=document.createElement('div'); body.className='mdbody'; body.innerHTML=mdToHtml(text);
   m.appendChild(body); activeThread().appendChild(m); scroll();
+  try{ makeDraggable(m, ()=>({kind:'message', text:String(text||'')})); }catch{}
 }
-async function replayHistory(){
+// ── Multi-chat: list / create / switch / delete conversations ──
+const convlist=$('#convlist');
+function clearThread(){ const t=threadFor('auto'); if(t) t.innerHTML=''; }
+async function loadConversations(){ try{ const {conversations}=await(await fetch('/api/conversations')).json(); return conversations||[]; }catch{ return []; } }
+async function renderConvList(){
+  if(!convlist) return;
+  const items=await loadConversations();
+  convlist.innerHTML='';
+  if(!items.length){ convlist.appendChild(el('convempty','No saved chats yet — start typing.')); return; }
+  for(const c of items){
+    const row=el('convitem'+(c.id===currentConvoId?' active':''));
+    row.innerHTML=`<span class="ct">${esc(c.title)}</span><span class="cm">${c.count}</span><button class="cdel" title="Delete chat">🗑</button>`;
+    try{ makeDraggable(row, ()=>({kind:'conversation', id:c.id, title:c.title})); }catch{}
+    const open=()=>openConversation(c.id);
+    row.querySelector('.ct').onclick=open; row.querySelector('.cm').onclick=open;
+    row.querySelector('.cdel').onclick=async(e)=>{ e.stopPropagation(); if(!confirm('Delete this chat permanently?'))return;
+      await fetch('/api/conversations/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:c.id})});
+      if(c.id===currentConvoId){ currentConvoId=null; await startFreshOrOpenLatest(); }
+      renderConvList();
+    };
+    convlist.appendChild(row);
+  }
+}
+function refreshConvList(){ renderConvList(); }
+async function openConversation(id){
+  currentConvoId=id; if(convlist) convlist.hidden=true; switchConvo('auto'); clearThread();
   try{
-    const {messages}=await(await fetch('/api/history?scope=main')).json();
-    if(messages&&messages.length){
-      for(const m of messages){ if(m.role==='user') addMsg('user',m.content); else renderAssistant(m.content,m.agent); }
-      openChat();
-      return true;
-    }
-  }catch{}
-  return false;
+    const {messages}=await(await fetch('/api/history?conversation='+encodeURIComponent(id))).json();
+    if(messages&&messages.length){ for(const m of messages){ if(m.role==='user') addMsg('user',m.content); else renderAssistant(m.content,m.agent); } }
+    else addMsg('assistant',GREETING);
+  }catch{ addMsg('assistant',GREETING); }
 }
+async function newChat(){
+  try{ const c=await(await fetch('/api/conversations',{method:'POST',headers:{'content-type':'application/json'}})).json(); currentConvoId=c.id; }
+  catch{ currentConvoId=null; }
+  if(convlist) convlist.hidden=true; switchConvo('auto'); clearThread(); addMsg('assistant',GREETING); openChat(); renderConvList();
+}
+async function startFreshOrOpenLatest(){
+  const items=await loadConversations();
+  if(items.length){ await openConversation(items[0].id); }
+  else {
+    try{ const c=await(await fetch('/api/conversations',{method:'POST',headers:{'content-type':'application/json'}})).json(); currentConvoId=c.id; }catch{ currentConvoId=null; }
+    switchConvo('auto'); clearThread(); addMsg('assistant',GREETING);
+  }
+}
+$('#newChatBtn')&&($('#newChatBtn').onclick=newChat);
+$('#chatsBtn')&&($('#chatsBtn').onclick=()=>{ if(!convlist) return; if(convlist.hidden){ renderConvList(); convlist.hidden=false; } else convlist.hidden=true; });
+
 async function initCockpit(username){
   currentUser=username;
   $('#uname').textContent=username; $('#userchip').style.display='';
   hideLogin();
   connectEvents();
-  const had=await replayHistory();
-  if(!had) addMsg('assistant',"Good day, Sir. All systems online. State an outcome and I'll handle it — your inbox, calendar, research, drafting, and more. Press the mic to speak, or tap a quick action below.");
+  await startFreshOrOpenLatest(); // prepare the latest chat (or a fresh one) without opening comms
   refreshState(); loadFiles(); loadWeather(); setTimeout(()=>{try{input.focus();}catch{}},300);
 }
 async function boot(){
@@ -1178,6 +1269,74 @@ $('#logoutBtn').addEventListener('click', async ()=>{
   try{ await fetch('/api/auth/logout',{method:'POST',headers:{'content-type':'application/json'}}); }catch{}
   location.reload();
 });
+// ── Drag-and-drop fabric: make objects draggable + the Holo-Tray staging dock ──
+function dragPayload(e,payload){
+  try{ e.dataTransfer.setData('application/x-nexus', JSON.stringify(payload)); }catch{}
+  const plain = payload.text || payload.title || payload.name || '';
+  if(plain){ try{ e.dataTransfer.setData('text/plain', plain); }catch{} }
+  e.dataTransfer.effectAllowed='copyLink';
+}
+function makeDraggable(node, payloadFn){
+  node.draggable=true;
+  node.addEventListener('dragstart',e=>{ e.stopPropagation(); dragPayload(e, payloadFn()); node.classList.add('dragging'); });
+  node.addEventListener('dragend',()=>node.classList.remove('dragging'));
+}
+// Send arbitrary text straight to ONE agent (a quick direct line), surfaced in comms.
+async function sendToAgent(agentId, text){
+  text=(text||'').trim(); if(!text||!nodeById[agentId]||busy) return;
+  openChat(); switchConvo('auto'); addMsg('user', text);
+  const think=addProg('→ '+nm(agentId)+' is on it…'); busy=true; sendBtn.disabled=true; setActive(agentId,true);
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:text, agentId})});
+    const data=await r.json(); think.remove(); addMsg('assistant', data.answer||'(no response)','type', nm(agentId));
+  }catch(e){ think.remove(); addMsg('assistant','⚠️ '+e.message); }
+  busy=false; sendBtn.disabled=false; setActive(agentId,false); refreshState();
+}
+// The Holo-Tray: fling messages, files, chats, or text here to stage them, then act.
+const dock=$('#dock'), dockhint=$('#dockhint'); let dockItems=[];
+function renderDock(){
+  if(!dock) return;
+  dock.innerHTML='';
+  if(!dockItems.length){ dock.appendChild(dockhint); dockhint.style.display=''; return; }
+  dockItems.forEach((it,idx)=>{
+    const chip=el('chip2');
+    const g = it.kind==='file'?'📄': it.kind==='conversation'?'💬': it.kind==='message'?'✦':'≡';
+    let acts='';
+    if(it.kind==='message'||it.kind==='text') acts='<button class="ca" data-a="send" title="Send to chat">→</button><button class="ca" data-a="mem" title="Remember">🧠</button><button class="ca" data-a="save" title="Save to vault">💾</button>';
+    else if(it.kind==='file') acts='<button class="ca" data-a="dl" title="Download">⤓</button>';
+    else if(it.kind==='conversation') acts='<button class="ca" data-a="open" title="Open chat">▶</button>';
+    chip.innerHTML=`<span class="g">${g}</span><span class="cl" title="${esc(it.label)}">${esc(it.label)}</span>${acts}<button class="ca x" data-a="rm" title="Remove">✕</button>`;
+    chip.querySelectorAll('.ca').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); dockAction(b.dataset.a, it, idx); });
+    makeDraggable(chip, ()=> it.kind==='file' ? {kind:'file', name:it.label, fileId:it.fileId} : it.kind==='conversation' ? {kind:'conversation', id:it.convId, title:it.label} : {kind:(it.kind||'text'), text:it.text});
+    dock.appendChild(chip);
+  });
+}
+function dockAdd(it){ dockItems.push(it); renderDock(); }
+async function dockAction(a,it,idx){
+  if(a==='rm'){ dockItems.splice(idx,1); renderDock(); return; }
+  if(a==='send'){ openChat(); input.value=it.text; send(); return; }
+  if(a==='mem'){ try{ await fetch('/api/memory',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({content:it.text})}); openChat(); addProg('🧠 Saved to long-term memory.'); refreshState(); }catch{} return; }
+  if(a==='save'){ try{ const data=btoa(unescape(encodeURIComponent(it.text||''))); await fetch('/api/files',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:((it.label||'note').slice(0,30).replace(/[^\w .-]/g,'_'))+'.md', type:'text/markdown', data})}); openChat(); addProg('💾 Saved to the File Vault.'); try{loadFiles();}catch{} }catch{} return; }
+  if(a==='dl'){ const aEl=document.createElement('a'); aEl.href='/api/files/get?id='+encodeURIComponent(it.fileId); aEl.download=it.label; document.body.appendChild(aEl); aEl.click(); aEl.remove(); return; }
+  if(a==='open'){ openConversation(it.convId); return; }
+}
+if(dock){
+  dock.addEventListener('dragover',e=>{ e.preventDefault(); dock.classList.add('dropon'); e.dataTransfer.dropEffect = [...(e.dataTransfer.types||[])].includes('Files')?'copy':'copyLink'; });
+  dock.addEventListener('dragleave',e=>{ if(!dock.contains(e.relatedTarget)) dock.classList.remove('dropon'); });
+  dock.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); dock.classList.remove('dropon');
+    if(e.dataTransfer.files && e.dataTransfer.files.length){ [...e.dataTransfer.files].forEach(f=>{ try{uploadFile(f);}catch{} }); addProg('💾 Encrypted into the vault.'); return; }
+    const nx=e.dataTransfer.getData('application/x-nexus');
+    if(nx){ try{ const p=JSON.parse(nx);
+      if(p.kind==='message'||p.kind==='text') dockAdd({kind:'message', label:(p.text||'').slice(0,46)||'text', text:p.text});
+      else if(p.kind==='file') dockAdd({kind:'file', label:p.name||'file', fileId:p.fileId});
+      else if(p.kind==='conversation') dockAdd({kind:'conversation', label:p.title||'chat', convId:p.id});
+      return;
+    }catch{} }
+    const txt=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').trim();
+    if(txt && !nodeById[txt]) dockAdd({kind:'text', label:txt.slice(0,46), text:txt});
+  });
+}
+
 setTimeout(()=>{const b=$('#boot'); if(b){ b.style.opacity='0'; setTimeout(()=>b.remove(),800); }},1700);
 boot();
 </script>

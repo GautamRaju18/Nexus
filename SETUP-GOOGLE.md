@@ -1,6 +1,6 @@
 # Connecting Gmail + Calendar (Phase 1)
 
-This lets Jarvis read/triage/draft/send your email and manage your Google Calendar.
+This lets Nexus read/triage/draft/send your email and manage your Google Calendar.
 It uses **your own Google account** via OAuth — there's no third-party cost, and your
 refresh token is stored **AES-256-GCM encrypted in your local vault**. Access tokens
 live only in memory.
@@ -8,7 +8,7 @@ live only in memory.
 It's a one-time, ~5-minute setup. You need a Google account.
 
 ## 1. Create a Google Cloud project
-1. Go to https://console.cloud.google.com → create a project (any name, e.g. "Jarvis").
+1. Go to https://console.cloud.google.com → create a project (any name, e.g. "Nexus").
 
 ## 2. Enable the APIs
 In that project, enable both:
@@ -22,7 +22,7 @@ In that project, enable both:
 4. **Audience / Test users:** add **your own Gmail address** as a test user.
    (The app stays "unverified" — fine for personal use. You'll see a warning screen on
    first connect; click **Advanced → Go to … (unsafe)** to proceed. It's your own app.)
-5. Scopes: you don't need to pre-add them here; Jarvis requests them at connect time
+5. Scopes: you don't need to pre-add them here; Nexus requests them at connect time
    (Gmail read, Gmail compose/send, Calendar events).
 
 ## 4. Create the OAuth client
@@ -42,7 +42,7 @@ npm start
 you ▸ /connect
 ```
 Your browser opens Google's consent screen. Approve it (click through the "unverified"
-warning — it's your own app). When it says "Jarvis is connected ✓", you're done.
+warning — it's your own app). When it says "Nexus is connected ✓", you're done.
 
 Then try:
 ```

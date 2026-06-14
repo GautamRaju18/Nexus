@@ -146,6 +146,8 @@ function migrate(db: DB): void {
   addColumn(db, "memory", "user_id", "TEXT");
   addColumn(db, "audit", "user_id", "TEXT");
   addColumn(db, "reminders", "user_id", "TEXT");
+  // Multiple named chats per user: each conversation gets a display title.
+  addColumn(db, "conversations", "title", "TEXT");
 }
 
 /** Add a column if it isn't already present (SQLite has no ADD COLUMN IF NOT EXISTS). */
