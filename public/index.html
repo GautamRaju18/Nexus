@@ -14,12 +14,16 @@
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
   body{
-    background:var(--bg); color:var(--text); height:100vh; overflow:hidden;
+    background:#020610; color:var(--text); height:100vh; overflow:hidden;
     font-family:"Segoe UI",system-ui,sans-serif;
+    /* the video's deep-space ambience: blue bloom below, cold glow above, violet drift */
     background-image:
-      radial-gradient(900px 600px at 50% 18%, rgba(20,90,140,.30), transparent 60%),
-      radial-gradient(1200px 800px at 50% 120%, rgba(10,60,90,.25), transparent 60%);
+      radial-gradient(1100px 700px at 50% 116%, rgba(10,86,170,.36), transparent 62%),
+      radial-gradient(900px 600px at 50% 14%, rgba(14,60,110,.24), transparent 60%),
+      radial-gradient(1400px 900px at 10% 82%, rgba(44,12,96,.15), transparent 60%),
+      radial-gradient(1200px 800px at 92% 20%, rgba(8,70,100,.14), transparent 60%);
   }
+  #bgfx{position:fixed; inset:0; z-index:0; pointer-events:none}
   .fx{position:fixed; inset:0; pointer-events:none; z-index:1;}
   .grid{background-image:linear-gradient(rgba(28,230,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(28,230,255,.05) 1px,transparent 1px);background-size:44px 44px; mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 80%);}
   .scan{background:linear-gradient(rgba(28,230,255,.06),transparent 8%); height:14px; animation:scan 7s linear infinite; opacity:.6;}
@@ -62,8 +66,34 @@
 
   .cols{flex:1; display:grid; grid-template-columns:300px 1fr 360px; gap:14px; min-height:0;}
   .col{display:flex; flex-direction:column; gap:12px; min-height:0;}
-  .card{border:1px solid var(--line); background:var(--panel); position:relative;
-    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));}
+  .card{border:1px solid var(--line); background:rgba(6,16,30,.62); position:relative; overflow:hidden;
+    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+    animation:cardbreath 7s ease-in-out infinite;}
+  /* the rails must never feel stagnant: a periodic scan sweep + breathing border, staggered */
+  .card::after{content:''; position:absolute; left:0; right:0; top:-45%; height:32%; pointer-events:none; z-index:5;
+    background:linear-gradient(180deg,transparent,rgba(28,230,255,.055) 45%,rgba(28,230,255,.11) 50%,rgba(28,230,255,.055) 55%,transparent);
+    animation:cardscan 11s linear infinite;}
+  .rail .card:nth-child(2)::after{animation-delay:2.6s} .rail .card:nth-child(3)::after{animation-delay:5.2s}
+  .rail .card:nth-child(4)::after{animation-delay:7.4s} .rail .card:nth-child(5)::after{animation-delay:9.1s}
+  .railR .card::after{animation-delay:1.4s} .railR .card:nth-child(3)::after{animation-delay:6.3s}
+  .rail .card:nth-child(even){animation-delay:3.4s}
+  @keyframes cardscan{0%,55%{top:-45%}90%,100%{top:120%}}
+  @keyframes cardbreath{50%{border-color:rgba(28,230,255,.34); box-shadow:0 0 16px rgba(28,230,255,.08)}}
+  .card h3::after{content:'●'; font-size:6px; color:var(--cy); opacity:.8; animation:h3blink 2.8s ease-in-out infinite}
+  @keyframes h3blink{50%{opacity:.15}}
+  /* ── holo-toasts: events materialize top-centre, then de-rez ── */
+  #toasts{position:fixed; top:86px; left:50%; transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none}
+  .htoast{display:flex; align-items:center; gap:11px; min-width:250px; max-width:440px; padding:9px 16px; background:rgba(4,14,26,.93); border:1px solid var(--cy); font-family:var(--mono); clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); box-shadow:0 0 22px rgba(28,230,255,.28); animation:tin .34s cubic-bezier(.2,.9,.3,1.25)}
+  .htoast .ti{font-size:15px; flex:none}
+  .htoast .tt{display:flex; flex-direction:column; min-width:0}
+  .htoast .tt b{font-size:10px; letter-spacing:2px; color:#eaffff; white-space:nowrap}
+  .htoast .tt i{font-style:normal; font-size:9px; letter-spacing:1px; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .htoast.out{animation:tout .42s forwards}
+  @keyframes tin{0%{opacity:0; transform:translateY(-16px) scale(.9); filter:brightness(2.6) blur(1px)}100%{opacity:1; transform:none; filter:none}}
+  @keyframes tout{100%{opacity:0; transform:translateY(-10px) scale(.94); filter:blur(3px)}}
+  /* full-screen ripple when the mic opens */
+  .nxripple{position:fixed; left:50%; top:50%; width:12px; height:12px; border-radius:50%; border:2px solid var(--cy); transform:translate(-50%,-50%); z-index:59; pointer-events:none; box-shadow:0 0 36px rgba(28,230,255,.8); animation:rip 1s ease-out forwards}
+  @keyframes rip{100%{width:150vmax; height:150vmax; opacity:0; border-width:1px}}
   .card h3{margin:0; padding:9px 14px; font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--cy); text-transform:uppercase; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center;}
   .card h3::before{content:""; width:6px; height:6px; background:var(--cy); box-shadow:var(--glow); transform:rotate(45deg)}
 
@@ -160,8 +190,43 @@
   .stripB canvas{height:26px; flex:1; width:auto; min-width:120px; opacity:.85}
   .brand{font-family:var(--mono); font-size:11px; letter-spacing:4px; color:var(--dim); white-space:nowrap; flex:none}
 
-  .hub{grid-column:2; grid-row:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:0; overflow:hidden; z-index:1}
-  .hub .reactor{padding:0; cursor:pointer; transition:transform .3s}
+  .hub{grid-column:2; grid-row:2; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:0; overflow:hidden; z-index:1}
+  /* ── NEURALINE: the living neural map is the centrepiece; the old reactor becomes an
+        invisible full-hub overlay so every existing click/drop behaviour still works. */
+  #neuro{position:absolute; inset:0; z-index:0; pointer-events:none}
+  .hub .reactor{position:absolute; inset:0; z-index:1; padding:0; cursor:pointer}
+  .hub .reactor svg{display:none}
+  .hub .outbar,.hub .commsbtn{display:none}
+  .nx{position:absolute; z-index:2; pointer-events:none; font-family:var(--mono); color:#9fdcee}
+  .nx-tl{top:10px; left:14px; font-size:11px; letter-spacing:4px; color:#eaffff; text-shadow:var(--glow)}
+  .nx-tl small{display:block; letter-spacing:2px; font-size:8.5px; color:var(--dim); margin-top:3px}
+  .nx-tr{top:10px; right:14px; text-align:right}
+  .nx-tr .st{font-size:13px; letter-spacing:5px; color:var(--cy); text-shadow:var(--glow)}
+  .nx-tr .st.think{color:var(--amber)} .nx-tr .st.listen{color:#58f6a2}
+  .nx-tr .ck{font-size:10px; color:var(--dim); letter-spacing:2px; margin-top:3px}
+  .nx-bl{bottom:8px; left:14px; font-size:9px; letter-spacing:2px; color:var(--dim)}
+  .nx-br{bottom:8px; right:14px; font-size:9px; letter-spacing:2px; color:var(--dim); text-align:right}
+  .nx-corner{width:14px; height:14px; border:1px solid rgba(28,230,255,.4)}
+  .nx-c1{top:30px; left:14px; border-right:0; border-bottom:0} .nx-c2{top:30px; right:14px; border-left:0; border-bottom:0}
+  .nx-c3{bottom:26px; left:14px; border-right:0; border-top:0} .nx-c4{bottom:26px; right:14px; border-left:0; border-top:0}
+  .nx-voice{bottom:34px; left:50%; transform:translateX(-50%); max-width:76%; font-size:12px; color:#cdeffb; text-align:center; letter-spacing:.5px; opacity:0; transition:opacity .4s; text-shadow:0 0 12px rgba(28,230,255,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .nx-voice.show{opacity:.95}
+  .nx-pill{top:10px; left:50%; transform:translateX(-50%); font-size:9px; letter-spacing:2px; color:#031018; background:linear-gradient(135deg,var(--cy),var(--cy2)); padding:4px 12px; font-weight:700; opacity:0; transition:opacity .4s; clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+  .nx-pill.show{opacity:1; animation:pillblink 1.6s ease-in-out infinite}
+  @keyframes pillblink{50%{filter:brightness(1.25)}}
+  .nx-side{top:44px; right:14px; width:168px; background:rgba(4,14,26,.72); border:1px solid var(--line); padding:8px 10px}
+  .nx-side .sh{font-size:8.5px; letter-spacing:2px; color:var(--dim); border-bottom:1px solid var(--line); padding-bottom:5px; margin-bottom:6px}
+  .nx-side .sr{display:flex; justify-content:space-between; align-items:center; font-size:9px; letter-spacing:1px; padding:3px 0; color:#bfe9f7}
+  .nx-side .sr b{font-size:8.5px; color:#58f6a2; font-weight:600; letter-spacing:1px}
+  .nx-side .sr b.warn{color:var(--amber)} .nx-side .sr b.dead{color:var(--red)}
+  .nx-cards{top:52px; left:14px; width:196px; display:flex; flex-direction:column; gap:10px}
+  .nx-cards.right{left:auto; right:190px; top:64px}
+  .nx-card{background:rgba(4,14,26,.82); border:1px solid var(--line); border-top:2px solid var(--cy); padding:9px 11px; opacity:0; transform:translateY(-8px); transition:.5s}
+  .nx-card.show{opacity:1; transform:none}
+  .nx-card .ch{font-size:8.5px; letter-spacing:2px; color:var(--dim); margin-bottom:6px}
+  .nx-card .cr{display:flex; justify-content:space-between; font-size:10px; color:#cdeffb; padding:3px 0; letter-spacing:.5px}
+  .nx-card .cr b{font-family:var(--mono); color:#eaffff; font-weight:700}
+  @media(max-width:1240px){ .nx-side,.nx-cards{display:none} }
   .hub .reactor svg{width:min(50vh,440px); height:min(50vh,440px)}
   .hub .reactor:hover{transform:scale(1.015)}
   .hub .reactor:hover svg{filter:drop-shadow(0 0 30px rgba(28,230,255,.95))}
@@ -267,6 +332,17 @@
   .composer{display:flex; gap:10px; padding:10px 16px 14px; align-items:flex-end;}
   #input{flex:1; resize:none; min-height:46px; max-height:150px; padding:12px 14px; background:rgba(2,12,22,.7); border:1px solid var(--line2); color:var(--text); font:inherit; font-size:14px;}
   #input:focus{outline:none; box-shadow:var(--glow)}
+  #attachBtn{font-size:24px; line-height:1; padding:0 13px; height:46px; cursor:pointer; background:transparent; color:var(--cy); border:1px solid var(--line2);}
+  #attachBtn:hover{box-shadow:var(--glow)}
+  #attachBtn:disabled{opacity:.45; cursor:default}
+  .attachbar{display:flex; flex-wrap:wrap; gap:6px; padding:8px 16px 0}
+  .attachbar[hidden]{display:none}
+  .attachbar .achip{display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:#cdeefb; background:rgba(8,22,38,.7); border:1px solid var(--line); padding:5px 9px; max-width:240px; clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,0 100%)}
+  .attachbar .achip .anm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .attachbar .achip .ax{cursor:pointer; color:var(--dim); flex:none}
+  .attachbar .achip .ax:hover{color:var(--red)}
+  .attachbar .achip.up{opacity:.55}
+  .attachbar .achip.up .anm::after{content:" · uploading…"; color:var(--cy)}
   #mic{font-size:18px; padding:0 14px; height:46px; cursor:pointer; background:transparent; color:var(--cy); border:1px solid var(--line2);}
   #mic:hover{box-shadow:var(--glow)}
   #mic.listening{color:var(--red); border-color:var(--red); box-shadow:0 0 16px rgba(255,75,92,.7); animation:micp 1s ease-in-out infinite}
@@ -278,6 +354,45 @@
   .tab{flex:1; text-align:center; padding:9px; font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--dim); cursor:pointer; text-transform:uppercase; border-bottom:2px solid transparent}
   .tab.active{color:var(--cy); border-bottom-color:var(--cy); text-shadow:var(--glow)}
   .panel{flex:1; overflow-y:auto; padding:10px 12px;}
+  /* ── Operations panels (Brief / Reminders / Finance / Jobs) ── */
+  .otab{flex:1; text-align:center; padding:9px 3px; font-family:var(--mono); font-size:9.5px; letter-spacing:1px; color:var(--dim); cursor:pointer; text-transform:uppercase; border-bottom:2px solid transparent}
+  .otab.active{color:var(--cy); border-bottom-color:var(--cy); text-shadow:var(--glow)}
+  .op-empty{color:var(--dim); font-family:var(--mono); font-size:11px; text-align:center; padding:18px 8px; line-height:1.5}
+  .opk{color:var(--dim); font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:1px; margin:12px 0 5px}
+  .brief .bg{font-family:var(--mono); font-size:13px; color:#eaffff; margin-bottom:4px}
+  .brief .bline{display:flex; gap:8px; align-items:baseline; font-size:12px; color:#cdeefb; padding:5px 0; border-bottom:1px solid rgba(28,230,255,.07)}
+  .brief .bline .bi{color:var(--cy); flex:none}
+  .remadd{display:flex; gap:6px; margin-bottom:10px}
+  .remadd input{flex:1; min-width:0; background:rgba(2,12,22,.7); border:1px solid var(--line2); color:var(--text); font:inherit; font-size:12px; padding:7px 9px}
+  .remadd .rin{width:58px; flex:none}
+  .remadd button{background:transparent; border:1px solid var(--line2); color:var(--cy); cursor:pointer; padding:0 11px; font-size:16px}
+  .remadd button:hover{box-shadow:var(--glow)}
+  .remrow{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(28,230,255,.07)}
+  .remrow .rt{flex:1; min-width:0; font-size:12px; color:#cdeefb}
+  .remrow .rd{font-family:var(--mono); font-size:9px; color:var(--dim)}
+  .remrow.over .rd{color:var(--amber)}
+  .remrow .rx{cursor:pointer; color:var(--dim); border:1px solid var(--line2); width:22px; height:20px; line-height:18px; text-align:center; flex:none}
+  .remrow .rx:hover{color:var(--red); border-color:var(--red)}
+  .fin-tot{display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:6px}
+  .fin-tot .ft{background:rgba(8,22,38,.5); border:1px solid var(--line); padding:8px 4px; text-align:center}
+  .fin-tot .ft .v{font-family:var(--mono); font-size:12px; font-weight:700}
+  .fin-tot .ft .l{font-size:8.5px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-top:2px}
+  .vin{color:var(--good)} .vout{color:#ff9aa6} .vnet{color:var(--cy)}
+  .catbar{margin:7px 0}
+  .catbar .cl{display:flex; justify-content:space-between; font-size:11px; color:#cdeefb; margin-bottom:3px}
+  .catbar .cl .cv{font-family:var(--mono); color:var(--dim)}
+  .catbar .ctrack{height:7px; background:rgba(28,230,255,.08)}
+  .catbar .cfill{height:100%; background:linear-gradient(90deg,var(--cy),var(--cy2))}
+  .txn{display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-bottom:1px solid rgba(28,230,255,.06); font-size:11px}
+  .txn .td{color:#cdeefb; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .txn .ta{font-family:var(--mono); flex:none}
+  .txn .ta.pos{color:var(--good)} .txn .ta.neg{color:#ff9aa6}
+  .jobcol{margin-bottom:12px}
+  .jobcol .jh{display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--cy); border-bottom:1px solid var(--line); padding-bottom:4px; margin-bottom:6px}
+  .jobcard{background:rgba(8,22,38,.5); border:1px solid var(--line); border-left:2px solid var(--cy); padding:7px 9px; margin-bottom:6px}
+  .jobcard .jr{font-size:12px; color:#eaffff}
+  .jobcard .jc{font-size:10px; color:var(--dim); font-family:var(--mono)}
+  .jstat-applied{border-left-color:var(--amber)} .jstat-interviewing{border-left-color:#b98cff} .jstat-offer{border-left-color:var(--good)} .jstat-rejected{border-left-color:var(--red)}
   .node{display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid rgba(28,230,255,.1); border-left:2px solid transparent; transition:.2s; padding-left:8px;}
   .node .st{width:7px;height:7px;border-radius:50%;background:#2c5168;box-shadow:none;flex:none; transition:.2s}
   .node .info{flex:1; min-width:0}
@@ -324,6 +439,11 @@
   .fileswrap{position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center}
   .fileswrap[hidden]{display:none}
   .fileswrap .filesview{position:relative; z-index:21; flex:none; width:min(820px,92%); height:min(74vh,640px); display:flex; flex-direction:column; box-shadow:0 0 60px rgba(28,230,255,.28); animation:popin .26s cubic-bezier(.2,.9,.3,1.15)}
+  .fileswrap .fpcard{width:min(940px,94%); height:min(86vh,860px)}
+  .fpbody{flex:1; min-height:0; overflow:auto; padding:12px; display:flex; align-items:center; justify-content:center; background:rgba(2,10,20,.5)}
+  .fpbody .fpframe{width:100%; height:100%; border:0; background:#fff; border-radius:2px}
+  .fpbody .fpimg{max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 0 30px rgba(0,0,0,.5)}
+  .fpbody .fptext{width:100%; height:100%; overflow:auto; white-space:pre-wrap; font-family:var(--mono); font-size:12px; color:#cdeefb; padding:14px; margin:0}
   .filestoolbar{display:flex; align-items:center; gap:12px; padding:10px 16px 0}
   .filestoolbar #filesSearch{flex:1; background:rgba(8,22,38,.6); border:1px solid var(--line); color:#cdeefb; font-family:var(--mono); font-size:12px; padding:9px 12px; outline:none; transition:.15s; clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%)}
   .filestoolbar #filesSearch:focus{border-color:var(--cy); box-shadow:var(--glow)}
@@ -389,6 +509,8 @@
 </style>
 </head>
 <body>
+  <canvas id="bgfx" aria-hidden="true"></canvas>
+  <div id="toasts" aria-live="polite"></div>
   <div class="fx grid"></div><div class="fx scan"></div><div class="fx vig"></div>
   <div class="brk tl"></div><div class="brk tr"></div><div class="brk bl"></div><div class="brk br"></div>
 
@@ -413,7 +535,7 @@
     <div class="top">
       <div>
         <div class="title">N.E.X.U.S</div>
-        <div class="sub">Stark Industries // Chief of Staff</div>
+        <div class="sub">Neuraline // Chief of Staff</div>
       </div>
       <div class="spacer"></div>
       <div class="read">Brain<br><b id="brain">…</b></div>
@@ -458,6 +580,18 @@
           <div class="panel" id="tab-activity" style="display:none"></div>
           <div class="unwirezone" id="unwirezone">⌫ drop here to remove from circuit</div>
         </div>
+        <div class="card tabcard opscard">
+          <div class="tabs">
+            <div class="otab active" data-otab="brief">Brief</div>
+            <div class="otab" data-otab="reminders">Reminders</div>
+            <div class="otab" data-otab="finance">Finance</div>
+            <div class="otab" data-otab="jobs">Jobs</div>
+          </div>
+          <div class="panel" id="op-brief"></div>
+          <div class="panel" id="op-reminders" style="display:none"></div>
+          <div class="panel" id="op-finance" style="display:none"></div>
+          <div class="panel" id="op-jobs" style="display:none"></div>
+        </div>
       </div>
 
       <!-- ── TOP STRIP ── -->
@@ -472,9 +606,21 @@
         <div class="ro"><span>GRID</span><b>17.4°N 78.5°E</b></div>
       </div>
 
-      <!-- ── CENTRE: the arc reactor hub ── -->
+      <!-- ── CENTRE: the NEURALINE — a living neural map of the whole organization ── -->
       <div class="hub" id="hub">
-        <div class="reactor" id="reactor" title="Tap to open comms">
+        <canvas id="neuro" aria-hidden="true"></canvas>
+        <div class="nx nx-tl">N . E . X . U . S .<small id="nxLink">NEURALINE ONLINE — CONNECTED</small></div>
+        <div class="nx nx-tr"><div class="st" id="nxStatus">ONLINE</div><div class="ck" id="nxClock">--:--:--</div></div>
+        <div class="nx nx-pill" id="nxPill">● BRIEFING · LIVE</div>
+        <div class="nx nx-side" id="nxSide"><div class="sh">NEURALINE // CONTROL STATUS</div></div>
+        <div class="nx nx-cards" id="nxCardsL"></div>
+        <div class="nx nx-cards right" id="nxCardsR"></div>
+        <div class="nx nx-voice" id="nxVoice"></div>
+        <div class="nx nx-bl" id="nxBL">ASR // LISTENING FOR "HEY NEXUS"</div>
+        <div class="nx nx-br">"HEY NEXUS" · ON GUARD<br>ENC · AES-256 · LOCAL</div>
+        <div class="nx nx-corner nx-c1"></div><div class="nx nx-corner nx-c2"></div>
+        <div class="nx nx-corner nx-c3"></div><div class="nx nx-corner nx-c4"></div>
+        <div class="reactor" id="reactor" title="Tap to open comms · drop files or agents anywhere">
           <svg viewBox="0 0 240 240" aria-hidden="true">
             <defs>
               <radialGradient id="core" cx="50%" cy="50%" r="50%">
@@ -508,7 +654,7 @@
       <div class="strip stripB">
         <span class="sysline" id="sysline">ALL SYSTEMS NOMINAL</span>
         <canvas id="eq" width="320" height="26"></canvas>
-        <span class="brand">STARK INDUSTRIES</span>
+        <span class="brand">N.E.X.U.S. // NEURALINE</span>
       </div>
 
       <!-- ── RIGHT RAIL ── -->
@@ -562,7 +708,10 @@
           <div class="modebar" id="modebar" style="display:none"></div>
           <div id="chat"></div>
           <div class="quick" id="quick"></div>
+          <div class="attachbar" id="attachbar" hidden></div>
           <div class="composer">
+            <input type="file" id="chatFile" multiple hidden>
+            <button id="attachBtn" title="Attach files or images for the agent to use">＋</button>
             <textarea id="input" placeholder="State an outcome, or press 🎤 to speak…"></textarea>
             <button id="mic" title="Speak">🎤</button>
             <button id="send">Send</button>
@@ -577,6 +726,15 @@
           <h3>File Vault — All Files <span class="enc">🔒 ENCRYPTED · LOCAL</span><button class="xbtn" id="filesClose" title="Close (Esc)">✕</button></h3>
           <div class="filestoolbar"><input id="filesSearch" placeholder="🔍  Search files…" autocomplete="off" spellcheck="false"><span class="ftcount" id="filesCount"></span></div>
           <div class="filesgridwrap" id="filesgridwrap"><div class="filesgrid" id="filesgrid"></div></div>
+        </div>
+      </div>
+
+      <!-- ── Single-file preview: pops out in the centre when a file is dropped on the reactor ── -->
+      <div class="fileswrap" id="filepreview" hidden>
+        <div class="chatbackdrop" id="fpBackdrop"></div>
+        <div class="card filesview fpcard">
+          <h3 class="fphead"><span id="fpTitle">Preview</span> <span class="enc">🔒 LOCAL</span><button class="xbtn" id="fpOpen" title="Open in new tab">⮺</button><button class="xbtn" id="fpClose" title="Close (Esc)">✕</button></h3>
+          <div class="fpbody" id="fpBody"></div>
         </div>
       </div>
     </div>
@@ -777,16 +935,20 @@ function decide(id,decision){fetch('/api/approve',{method:'POST',headers:{'conte
 function markApproval(id,decision){const c=chat.querySelector(`.approval[data-id="${id}"]`);if(!c)return;c.classList.add('done');const a=c.querySelector('.acts');if(a)a.innerHTML=decision?'<span style="color:var(--good);font-family:var(--mono)">✅ APPROVED</span>':'<span style="color:var(--red);font-family:var(--mono)">❌ DENIED</span>';}
 
 async function send(text){
-  const msg=(text??input.value).trim(); if(!msg||busy)return;
+  const msg=(text??input.value).trim();
+  const atts = pendingAttach.filter(a=>a.id); // only fully-uploaded attachments
+  if((!msg && !atts.length)||busy)return;
   openChat(); // surface the conversation (covers voice/wake-word commands)
   // Pick the mode: wired circuit (≥2 agents) → direct line (1 agent) → auto (Chief of Staff).
   const mode = wired.size>=2 ? 'wire' : (directAgent ? 'direct' : 'auto');
   const body = {message:msg};
+  if(atts.length) body.attachments = atts.map(a=>a.id); // agent reads these via injected text
   if(mode==='wire') body.agents=[...wired];
   else if(mode==='direct') body.agentId=directAgent;
   else body.conversationId=currentConvoId; // auto: persist into the active chat
   const directWho = mode==='direct' ? nm(directAgent) : undefined;
-  input.value=''; addMsg('user',msg);
+  const bubble = msg + (atts.length ? (msg?'\n':'')+'📎 '+atts.map(a=>a.name).join(', ') : '');
+  input.value=''; clearAttachments(); addMsg('user',bubble);
   busy=true; sendBtn.disabled=true; reactor.classList.add('busy'); $('#gActive').textContent='WORKING'; $('#gActive').style.color='var(--amber)';
   const think=addProg(mode==='wire'?'⚡ wiring agents…':'processing…');
   try{
@@ -800,6 +962,40 @@ async function send(text){
 }
 sendBtn.onclick=()=>send();
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+// ── Chat attachments: the "+" button adds files/images the agent can actually use ──
+// Each picked file is encrypted into the vault, then its text is fed to the agent on send.
+let pendingAttach=[]; // {name, type, id, up}
+const attachBtn=$('#attachBtn'), chatFile=$('#chatFile'), attachbar=$('#attachbar');
+function renderAttachbar(){
+  if(!attachbar) return;
+  attachbar.hidden = pendingAttach.length===0;
+  attachbar.innerHTML='';
+  pendingAttach.forEach((a,idx)=>{
+    const c=el('achip'+(a.up?' up':''));
+    c.innerHTML=`<span class="g">${fileGlyph(a.type,a.name)}</span><span class="anm" title="${esc(a.name)}">${esc(a.name)}</span><span class="ax" title="Remove">✕</span>`;
+    c.querySelector('.ax').onclick=()=>{ pendingAttach.splice(idx,1); renderAttachbar(); };
+    attachbar.appendChild(c);
+  });
+}
+function clearAttachments(){ pendingAttach=[]; renderAttachbar(); }
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=()=>rej(new Error('read failed')); r.readAsDataURL(file); }); }
+async function addAttachment(file){
+  if(file.size>8*1024*1024){ addMsg('assistant','⚠️ '+esc(file.name)+' is too large (max 8 MB).'); return; }
+  const item={name:file.name, type:file.type, id:null, up:true};
+  pendingAttach.push(item); renderAttachbar();
+  try{
+    const data=await fileToB64(file);
+    const r=await fetch('/api/files',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,type:file.type,data})});
+    const j=await r.json(); if(j.error||!j.file) throw new Error(j.error||'upload failed');
+    item.id=j.file.id; item.up=false; renderAttachbar();
+    try{ if(fileswrap&&!fileswrap.hidden) renderFilesGrid(); renderFiles(); }catch{}
+  }catch(e){ pendingAttach=pendingAttach.filter(x=>x!==item); renderAttachbar(); addMsg('assistant','⚠️ Couldn\'t attach '+esc(file.name)); }
+}
+attachBtn&&(attachBtn.onclick=()=>chatFile&&chatFile.click());
+chatFile&&(chatFile.onchange=()=>{ [...chatFile.files].forEach(addAttachment); chatFile.value=''; });
+// Paste an image straight into the chat → attach it.
+input&&input.addEventListener('paste',e=>{ const its=[...(e.clipboardData?.items||[])].filter(i=>i.kind==='file'); if(its.length){ e.preventDefault(); its.forEach(i=>{ const f=i.getAsFile(); if(f) addAttachment(f); }); } });
 
 // ── voice INPUT — ON-DEVICE Whisper + auto-stop (works in Brave; audio NEVER leaves your PC) ──
 let asrLoading=null, asrPipe=null, mediaRec=null, chunks=[], recording=false, vadTimer=null, vadCtx=null;
@@ -954,7 +1150,7 @@ function connectEvents(){
   ev.addEventListener('agent',e=>{const d=JSON.parse(e.data);setActive(d.id,d.active);});
   ev.addEventListener('done',()=>{clearActive();});
   ev.addEventListener('a2a',e=>{const d=JSON.parse(e.data);addA2A(d.from,d.to,d.msg);flashComm(d.from);flashComm(d.to);arc(d.from,d.to);});
-  ev.addEventListener('reminder',e=>{const d=JSON.parse(e.data); addProg('⏰ Reminder: '+d.text+(d.recurrence?' (repeats '+d.recurrence+')':'')); try{openChat();speak('Reminder: '+d.text);}catch{}});
+  ev.addEventListener('reminder',e=>{const d=JSON.parse(e.data); addProg('⏰ Reminder: '+d.text+(d.recurrence?' (repeats '+d.recurrence+')':'')); try{openChat();speak('Reminder: '+d.text);}catch{} try{ if(activeOtab()==='reminders')loadReminders(); else if(activeOtab()==='brief')loadBrief(); }catch{}});
   ev.addEventListener('turn',e=>{const d=JSON.parse(e.data); addMsg('assistant', d.message, 'md', nm(d.id)); flashComm(d.id);}); // a wired agent's live contribution
 }
 function setActive(id,on){const n=nodeById[id];if(n)n.classList.toggle('active',!!on);}
@@ -986,8 +1182,11 @@ reactor&&reactor.addEventListener('dragleave',()=>reactor.classList.remove('drop
 reactor&&reactor.addEventListener('drop',e=>{e.preventDefault();reactor.classList.remove('dropon');
   // 1) Files dragged in from the OS → encrypt straight into the vault
   if(e.dataTransfer.files&&e.dataTransfer.files.length){ [...e.dataTransfer.files].forEach(uploadFile); openFilesView(); return; }
+  // 2) A vault file (dragged from the File Vault) → preview it in the centre
+  const nx=e.dataTransfer.getData('application/x-nexus');
+  if(nx){ try{ const p=JSON.parse(nx); if(p.kind==='file'&&p.fileId){ openFilePreview(p.fileId, p.name); return; } }catch{} }
   const id=e.dataTransfer.getData('text/plain');
-  // 2) Plain text / a link dropped onto the core → route it as a command
+  // 3) Plain text / a link dropped onto the core → route it as a command
   const txt=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').trim();
   if(id==='__files__'){ openFilesView(); }
   else if(id&&nodeById[id]){ wired.clear(); directAgent=id; updateMode(); try{arc(id,'chief-of-staff');}catch{} }
@@ -1077,6 +1276,7 @@ function renderOrg(agents){
       // Something staged/dragged onto an agent → that agent acts on it.
       const nx=e.dataTransfer.getData('application/x-nexus');
       if(nx){ try{ const p=JSON.parse(nx);
+        if(p.kind==='file'){ giveFileToAgent(a.id, p.name); return; } // drop a file on an agent → it reads it
         if(p.kind==='message'||p.kind==='text'){ sendToAgent(a.id, p.text); return; }
         if(p.kind==='conversation'){ sendToAgent(a.id, 'Pick up this thread — "'+(p.title||'')+'" — and take it further.'); return; }
       }catch{} }
@@ -1118,6 +1318,7 @@ async function renderFiles(){
     for(const f of files){
       const row=el('frow');
       row.innerHTML=`<div class="ficon">${fileGlyph(f.type,f.name)}</div><div class="finfo"><div class="fnm">${esc(f.name)}</div><div class="fmeta">${fmtSize(f.size)} · ${new Date(f.date).toLocaleDateString('en-GB')}</div></div><button class="fbtn fdl" title="Download">⤓</button><button class="fbtn fdel" title="Delete">✕</button>`;
+      row.title='Drag onto an agent to have it read this file (e.g. your résumé → Job Application Agent)';
       try{ makeDraggable(row, ()=>({kind:'file', name:f.name, fileId:f.id})); }catch{}
       row.querySelector('.fdl').onclick=()=>{ const a=document.createElement('a'); a.href='/api/files/get?id='+encodeURIComponent(f.id); a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); };
       row.querySelector('.fdel').onclick=async()=>{ if(!confirm('Delete "'+f.name+'"? This removes it permanently.'))return; await fetch('/api/files/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:f.id})}); renderFiles(); };
@@ -1148,6 +1349,26 @@ function closeFilesView(){ if(fileswrap)fileswrap.hidden=true; }
 $('#filesClose')&&($('#filesClose').onclick=closeFilesView);
 $('#filesBackdrop')&&($('#filesBackdrop').onclick=closeFilesView);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&fileswrap&&!fileswrap.hidden) closeFilesView(); });
+
+// ── Single-file preview (drop a file on the reactor → view the PDF/image/text in the centre) ──
+const filepreview=$('#filepreview');
+function openFilePreview(id,name){
+  if(!filepreview||!id) return;
+  try{closeChat();}catch{} try{closeFilesView();}catch{}
+  const url='/api/files/get?id='+encodeURIComponent(id)+'&inline=1';
+  const n=(name||'').toLowerCase();
+  const t=$('#fpTitle'); if(t)t.textContent=name||'Preview';
+  const body=$('#fpBody');
+  if(/\.(png|jpe?g|gif|webp|svg|bmp)$/.test(n)) body.innerHTML='<img class="fpimg" src="'+url+'" alt="">';
+  else if(/\.(pdf|txt|md|markdown|csv|log|json|html?|xml)$/.test(n)) body.innerHTML='<iframe class="fpframe" src="'+url+'"></iframe>';
+  else body.innerHTML='<div class="empty">No inline preview for this type — <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--cy)">open / download →</a></div>';
+  const ob=$('#fpOpen'); if(ob)ob.onclick=()=>window.open(url,'_blank','noopener');
+  filepreview.hidden=false;
+}
+function closeFilePreview(){ if(filepreview){ filepreview.hidden=true; const b=$('#fpBody'); if(b)b.innerHTML=''; } }
+$('#fpClose')&&($('#fpClose').onclick=closeFilePreview);
+$('#fpBackdrop')&&($('#fpBackdrop').onclick=closeFilePreview);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&filepreview&&!filepreview.hidden) closeFilePreview(); });
 let _allFiles=[];
 function isImg(f){ return /^image\//.test(f.type||'')||/\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f.name||''); }
 function canPreview(f){ return isImg(f)||/pdf/i.test(f.type||'')||/\.pdf$/i.test(f.name||'')||/^(text\/|application\/json)/i.test(f.type||'')||/\.(txt|md|json|csv|log)$/i.test(f.name||''); }
@@ -1246,8 +1467,77 @@ async function initCockpit(username){
   hideLogin();
   connectEvents();
   await startFreshOrOpenLatest(); // prepare the latest chat (or a fresh one) without opening comms
-  refreshState(); loadFiles(); loadWeather(); setTimeout(()=>{try{input.focus();}catch{}},300);
+  refreshState(); loadFiles(); loadWeather(); loadBrief(); setTimeout(()=>{try{input.focus();}catch{}},300);
 }
+
+// ── Operations panels: Brief / Reminders / Finance / Jobs ──────────────────────
+document.querySelectorAll('.otab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.otab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  for(const k of ['brief','reminders','finance','jobs']) $('#op-'+k).style.display=(k===t.dataset.otab?'':'none');
+  const k=t.dataset.otab; if(k==='brief')loadBrief(); else if(k==='reminders')loadReminders(); else if(k==='finance')loadFinance(); else if(k==='jobs')loadJobs();
+});
+function inr(n){ const v=Math.round(Math.abs(n)).toLocaleString('en-IN'); return (n<0?'-':'')+'₹'+v; }
+function dueLabel(ts){ const d=new Date(ts), now=Date.now(), day=86400000; if(ts<now) return 'overdue'; if(new Date().toDateString()===d.toDateString()) return 'today '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); if(ts-now<7*day) return d.toLocaleDateString('en-GB',{weekday:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+
+async function loadBrief(){
+  const b=$('#op-brief'); if(!b)return; b.innerHTML='<div class="op-empty">loading…</div>';
+  try{ const d=await(await fetch('/api/brief')).json(); let h='<div class="brief"><div class="bg">'+esc(d.greeting)+'</div>';
+    h+='<div class="opk">Due today</div>';
+    if(d.remindersDueToday.length){ for(const r of d.remindersDueToday) h+='<div class="bline"><span class="bi">'+(r.overdue?'⚠':'◷')+'</span><span>'+esc(r.text)+'</span></div>'; }
+    else h+='<div class="bline" style="color:var(--dim)">Nothing due today.</div>';
+    if(d.jobs.total){ h+='<div class="opk">Job pipeline</div><div class="bline"><span class="bi">💼</span><span>'+d.jobs.total+' applications — '+Object.entries(d.jobs.counts).map(([k,v])=>v+' '+k).join(', ')+'</span></div>'; }
+    if(d.financeMonth){ h+='<div class="opk">This month</div><div class="bline"><span class="bi">💰</span><span>In '+inr(d.financeMonth.in)+' · Out '+inr(d.financeMonth.out)+' · Net '+inr(d.financeMonth.net)+'</span></div>'; }
+    h+='<div class="opk">Knowledge</div><div class="bline"><span class="bi">🧠</span><span>'+d.memoryCount+' things remembered'+(d.googleConnected?' · Google connected':'')+'</span></div></div>';
+    b.innerHTML=h;
+  }catch{ b.innerHTML='<div class="op-empty">Couldn\'t load brief.</div>'; }
+}
+async function loadReminders(){
+  const b=$('#op-reminders'); if(!b)return;
+  b.innerHTML='<div class="remadd"><input id="remText" placeholder="Remind me to…" autocomplete="off"><input id="remMin" class="rin" type="number" min="1" placeholder="min"><button id="remAdd" title="Add reminder">＋</button></div><div id="remList"><div class="op-empty">loading…</div></div>';
+  $('#remAdd').onclick=addReminder; $('#remText').addEventListener('keydown',e=>{if(e.key==='Enter')addReminder();});
+  try{ const d=await(await fetch('/api/reminders')).json(); const list=$('#remList');
+    if(!d.reminders.length){ list.innerHTML='<div class="op-empty">No reminders. Add one above, or ask the Secretary.</div>'; return; }
+    list.innerHTML=''; for(const r of d.reminders){ const row=el('remrow'+(r.overdue?' over':''));
+      row.innerHTML='<div class="rt">'+esc(r.text)+(r.recurrence?' <span class="rd">⟳'+esc(r.recurrence)+'</span>':'')+'<div class="rd">'+dueLabel(r.dueAt)+'</div></div><div class="rx" title="Cancel">✕</div>';
+      row.querySelector('.rx').onclick=async()=>{ await fetch('/api/reminders/cancel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:r.id})}); loadReminders(); };
+      list.appendChild(row);
+    }
+  }catch{ const l=$('#remList'); if(l)l.innerHTML='<div class="op-empty">Couldn\'t load.</div>'; }
+}
+async function addReminder(){
+  const t=$('#remText'), m=$('#remMin'); const text=(t.value||'').trim(); const mins=Number(m.value);
+  if(!text){ t.focus(); return; } if(!mins||mins<=0){ m.focus(); return; }
+  await fetch('/api/reminders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text, inMinutes:mins})});
+  t.value=''; m.value=''; loadReminders();
+}
+async function loadFinance(){
+  const b=$('#op-finance'); if(!b)return; b.innerHTML='<div class="op-empty">loading…</div>';
+  try{ const d=await(await fetch('/api/finance')).json();
+    if(!d.hasData){ b.innerHTML='<div class="op-empty">No transactions yet.<br>Ask the Finance agent to import a bank CSV.</div>'; return; }
+    let h='<div class="fin-tot"><div class="ft"><div class="v vin">'+inr(d.totalIn)+'</div><div class="l">In</div></div><div class="ft"><div class="v vout">'+inr(d.totalOut)+'</div><div class="l">Out</div></div><div class="ft"><div class="v vnet">'+inr(d.net)+'</div><div class="l">Net</div></div></div>';
+    if(d.spendByCategory.length){ const max=Math.max(1,...d.spendByCategory.map(c=>c.spent));
+      h+='<div class="opk">Spend by category</div>';
+      for(const c of d.spendByCategory.slice(0,8)){ const pct=Math.round(c.spent/max*100); h+='<div class="catbar"><div class="cl"><span>'+esc(c.category)+'</span><span class="cv">'+inr(c.spent)+'</span></div><div class="ctrack"><div class="cfill" style="width:'+pct+'%"></div></div></div>'; }
+    }
+    if(d.recent.length){ h+='<div class="opk">Recent</div>';
+      for(const t of d.recent){ h+='<div class="txn"><span class="td">'+esc(t.description)+'</span><span class="ta '+(t.amount>=0?'pos':'neg')+'">'+inr(t.amount)+'</span></div>'; } }
+    b.innerHTML=h;
+  }catch{ b.innerHTML='<div class="op-empty">Couldn\'t load finance.</div>'; }
+}
+async function loadJobs(){
+  const b=$('#op-jobs'); if(!b)return; b.innerHTML='<div class="op-empty">loading…</div>';
+  try{ const d=await(await fetch('/api/jobs')).json();
+    if(!d.total){ b.innerHTML='<div class="op-empty">No applications tracked.<br>Drop your résumé on the Job agent to start.</div>'; return; }
+    const order=['saved','applied','interviewing','offer','rejected'], labels={saved:'Saved',applied:'Applied',interviewing:'Interviewing',offer:'Offers',rejected:'Rejected'};
+    let h=''; for(const st of order){ const items=d.applications.filter(a=>a.status===st); if(!items.length)continue;
+      h+='<div class="jobcol"><div class="jh"><span>'+labels[st]+'</span><span>'+items.length+'</span></div>';
+      for(const a of items) h+='<div class="jobcard jstat-'+st+'"><div class="jr">'+esc(a.role||'—')+'</div><div class="jc">'+esc(a.company||'')+'</div></div>';
+      h+='</div>';
+    }
+    b.innerHTML=h;
+  }catch{ b.innerHTML='<div class="op-empty">Couldn\'t load jobs.</div>'; }
+}
+function activeOtab(){ const t=document.querySelector('.otab.active'); return t?t.dataset.otab:'brief'; }
 async function boot(){
   try{
     const r=await fetch('/api/auth/me');
@@ -1291,6 +1581,16 @@ async function sendToAgent(agentId, text){
     const data=await r.json(); think.remove(); addMsg('assistant', data.answer||'(no response)','type', nm(agentId));
   }catch(e){ think.remove(); addMsg('assistant','⚠️ '+e.message); }
   busy=false; sendBtn.disabled=false; setActive(agentId,false); refreshState();
+}
+// Drop a file onto an agent → open a direct line to it, primed to read that file. The CEO
+// can then add context (e.g. the job posting) and send. The agent reads it via file_read.
+function giveFileToAgent(agentId, name){
+  if(!nodeById[agentId]||busy) return;
+  directAgent=agentId; wired.clear(); try{updateMode();}catch{}
+  try{flashComm(agentId);}catch{}
+  openChat();
+  input.value='Read my file "'+(name||'')+'" from the File Vault and use its real contents — ';
+  setTimeout(()=>{try{input.focus(); input.setSelectionRange(input.value.length,input.value.length);}catch{}},80);
 }
 // The Holo-Tray: fling messages, files, chats, or text here to stage them, then act.
 const dock=$('#dock'), dockhint=$('#dockhint'); let dockItems=[];
@@ -1339,6 +1639,237 @@ if(dock){
 
 setTimeout(()=>{const b=$('#boot'); if(b){ b.style.opacity='0'; setTimeout(()=>b.remove(),800); }},1700);
 boot();
+</script>
+<script>
+// ── NEURALINE — the living neural map (inspired by the Z.E.R.O. dashboard). Pure 2D
+// canvas, zero dependencies, fully offline. The whole organization renders as a brain:
+// a blazing core, six colour-coded department clusters, agents as labeled synapses with
+// dendrite branches, energy sparks racing the pathways. It reads the app's live signals
+// (busy/recording/wake word/agent activity) by wrapping the existing global functions —
+// no changes to the app logic itself.
+(()=>{
+  const cv=document.getElementById('neuro'), hub=document.getElementById('hub');
+  if(!cv||!hub) return;
+  const ctx=cv.getContext('2d');
+  const DCOL={leadership:'#25e8ff',personal:'#ffb84d',knowledge:'#b98cff',business:'#ff5d7e','finance-legal':'#58f6a2',guardian:'#ff9a3d'};
+  const DLBL={leadership:'COMMAND CORE',personal:'PERSONAL OPS',knowledge:'KNOWLEDGE GRID',business:'BUSINESS ENGINE','finance-legal':'FIN · LEGAL',guardian:'GUARDIAN'};
+  const FONT="9px 'JetBrains Mono',Consolas,monospace";
+  let W=0,H=0,DPR=1,nodes=[],edges=[],stars=[],clusters=[],agentPos={},built='';
+  let act={},sparks=[],mx=0,my=0,energy=0,lastSpawn=0,hover=null,core={x:0,y:0};
+
+  const sprites={};
+  function sprite(col){ if(sprites[col])return sprites[col]; const c=document.createElement('canvas'); c.width=c.height=32;
+    const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,0,16,16,16);
+    gr.addColorStop(0,'#fff'); gr.addColorStop(.35,col); gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr; g.fillRect(0,0,32,32); sprites[col]=c; return c; }
+
+  function fit(){ const r=hub.getBoundingClientRect(); if(r.width<4)return;
+    DPR=Math.min(devicePixelRatio||1,2); W=r.width; H=r.height; cv.width=W*DPR; cv.height=H*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0); if(window._nxAgents) build(window._nxAgents,true); }
+  new ResizeObserver(fit).observe(hub); fit();
+
+  function build(agents,force){
+    const sig=agents.map(a=>a.id).join(',')+'|'+W+'x'+H; if(!force&&sig===built)return; built=sig;
+    nodes=[];edges=[];clusters=[];agentPos={};stars=[];
+    const cx=W/2, cy=H/2, R=Math.min(W,H)*.30; core={x:cx,y:cy};
+    for(let i=0;i<90;i++) stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.1+.3,a:.08+Math.random()*.12});
+    const byDept={}; for(const a of agents){ if(a.id==='chief-of-staff')continue; (byDept[a.department]=byDept[a.department]||[]).push(a); }
+    const depts=Object.keys(byDept), n=Math.max(1,depts.length);
+    depts.forEach((d,di)=>{
+      const ang=-Math.PI/2+di*(Math.PI*2/n)+.3;
+      const ax=cx+Math.cos(ang)*R, ay=cy+Math.sin(ang)*R*.82, col=DCOL[d]||'#25e8ff';
+      clusters.push({d,x:ax,y:ay,col,label:DLBL[d]||d.toUpperCase(),ang});
+      edges.push({x1:cx,y1:cy,x2:ax,y2:ay,col,w:1.1,a:.34,bow:(Math.random()-.5)*60,ph:Math.random()*9});
+      const list=byDept[d];
+      list.forEach((ag,ai)=>{
+        const fa=ang+(ai-(list.length-1)/2)*(1.5/Math.max(1,list.length));
+        const fr=R*.38+Math.random()*R*.18;
+        const x=ax+Math.cos(fa)*fr, y=ay+Math.sin(fa)*fr*.9;
+        agentPos[ag.id]={x,y,col,name:ag.name,d};
+        nodes.push({x,y,r:2.6,col,ph:Math.random()*9,agent:ag.id});
+        edges.push({x1:ax,y1:ay,x2:x,y2:y,col,w:.8,a:.30,bow:(Math.random()-.5)*34,ph:Math.random()*9});
+        const nb=2+((Math.random()*2)|0);                     // dendrite branches → the veiny look
+        for(let b=0;b<nb;b++){
+          let px=x,py=y,dir=fa+(Math.random()-.5)*1.5; const segs=2+((Math.random()*3)|0);
+          for(let s=0;s<segs;s++){ const len=12+Math.random()*26; dir+=(Math.random()-.5)*.9;
+            const qx=px+Math.cos(dir)*len, qy=py+Math.sin(dir)*len;
+            edges.push({x1:px,y1:py,x2:qx,y2:qy,col,w:.55,a:.2,bow:(Math.random()-.5)*10,ph:Math.random()*9});
+            nodes.push({x:qx,y:qy,r:Math.max(.7,1.8-s*.45),col,ph:Math.random()*9});
+            px=qx;py=qy; }
+        }
+      });
+    });
+    for(let i=0;i<10&&clusters.length>1;i++){ const a=clusters[(Math.random()*clusters.length)|0], b=clusters[(Math.random()*clusters.length)|0];
+      if(a!==b) edges.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y,col:'#1ce6ff',w:.4,a:.07,bow:(Math.random()-.5)*120,ph:Math.random()*9}); }
+  }
+  window.nxBuild=(agents,force)=>{ window._nxAgents=agents; try{build(agents,force);}catch{} };
+  window.nxPulse=(id,on)=>{ act[id]=on?1:0; };
+  window.nxSpark=(from,to)=>{ const A=agentPos[from]||core, B=agentPos[to]||core;
+    sparks.push({x1:A.x,y1:A.y,x2:B.x,y2:B.y,bow:(Math.random()-.5)*80,ph:0,t:0,sp:.9,col:'#eaffff',w:2}); };
+
+  addEventListener('pointermove',e=>{ mx=e.clientX/innerWidth-.5; my=e.clientY/innerHeight-.5;
+    const r=hub.getBoundingClientRect(), lx=e.clientX-r.left, ly=e.clientY-r.top; hover=null; let best=26;
+    for(const id in agentPos){ const p=agentPos[id], d=Math.hypot(p.x-lx,p.y-ly); if(d<best){best=d;hover=id;} } },{passive:true});
+
+  function qp(e,t,wob){ const mpx=(e.x1+e.x2)/2, mpy=(e.y1+e.y2)/2, dx=e.x2-e.x1, dy=e.y2-e.y1, L=Math.hypot(dx,dy)||1;
+    const cqx=mpx-dy/L*(e.bow+wob), cqy=mpy+dx/L*(e.bow+wob), u=1-t;
+    return {x:u*u*e.x1+2*u*t*cqx+t*t*e.x2, y:u*u*e.y1+2*u*t*cqy+t*t*e.y2, cx:cqx, cy:cqy}; }
+
+  const stEl=document.getElementById('nxStatus'); let stCache='', lt=performance.now();
+  function frame(now){
+    requestAnimationFrame(frame); if(document.hidden||!W)return;
+    const dt=Math.min((now-lt)/1000,.05); lt=now; const t=now/1000;
+    const isBusy=typeof busy!=='undefined'&&busy, isRec=typeof recording!=='undefined'&&recording, isWake=typeof wakeOn!=='undefined'&&wakeOn;
+    energy+=((isBusy?1:0)-energy)*dt*2;
+    const st=isRec?'LISTENING':isBusy?'THINKING':(isWake?'STANDBY':'ONLINE');
+    if(st!==stCache&&stEl){ stCache=st; stEl.textContent=st; stEl.className='st'+(st==='THINKING'?' think':st==='LISTENING'?' listen':''); }
+    ctx.clearRect(0,0,W,H);
+    ctx.save(); ctx.translate(mx*16,my*11); ctx.globalCompositeOperation='lighter';
+    for(const s of stars){ ctx.globalAlpha=s.a; ctx.fillStyle='#9fdcee'; ctx.fillRect(s.x,s.y,s.r,s.r); }
+    for(const c of clusters){ let g=.5; for(const id in agentPos){ if(agentPos[id].d===c.d&&act[id]){g=1.15;break;} }
+      const gr=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,90); gr.addColorStop(0,c.col+'33'); gr.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=g*(.5+energy*.3); ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(c.x,c.y,90,0,7); ctx.fill(); }
+    for(const e of edges){ const q=qp(e,.5,Math.sin(t*.7+e.ph)*4);
+      ctx.globalAlpha=e.a*(.75+.25*Math.sin(t*1.3+e.ph))*(1+energy*.5); ctx.strokeStyle=e.col; ctx.lineWidth=e.w;
+      ctx.beginPath(); ctx.moveTo(e.x1,e.y1); ctx.quadraticCurveTo(q.cx,q.cy,e.x2,e.y2); ctx.stroke(); }
+    for(const nd of nodes){ const tw=.7+.3*Math.sin(t*2+nd.ph), r=nd.r*(nd.agent&&act[nd.agent]?2.1:1)*tw, s2=r*6;
+      ctx.globalAlpha=(nd.agent&&act[nd.agent])?1:.8; ctx.drawImage(sprite(nd.col),nd.x-s2/2,nd.y-s2/2,s2,s2); }
+    const cr=34+Math.sin(t*1.6)*4+energy*26;
+    const cg=ctx.createRadialGradient(core.x,core.y,0,core.x,core.y,cr*2.4);
+    cg.addColorStop(0,'rgba(240,255,255,.95)'); cg.addColorStop(.25,'rgba(120,240,255,.55)'); cg.addColorStop(1,'rgba(28,230,255,0)');
+    ctx.globalAlpha=.9; ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(core.x,core.y,cr*2.4,0,7); ctx.fill();
+    if(energy>.25){ const bw=26+energy*26, bg=ctx.createLinearGradient(core.x-bw/2,0,core.x+bw/2,0);   // thinking → light column
+      bg.addColorStop(0,'rgba(28,230,255,0)'); bg.addColorStop(.5,'rgba(220,255,255,'+(.5*energy).toFixed(3)+')'); bg.addColorStop(1,'rgba(28,230,255,0)');
+      ctx.globalAlpha=1; ctx.fillStyle=bg; ctx.fillRect(core.x-bw/2, core.y-H*.34*energy, bw, H*.68*energy); }
+    if(now-lastSpawn>(isBusy?120:900)&&edges.length){ lastSpawn=now; const e=edges[(Math.random()*edges.length)|0];
+      sparks.push({x1:e.x1,y1:e.y1,x2:e.x2,y2:e.y2,bow:e.bow,ph:e.ph,t:0,sp:.5+Math.random()*.7,col:'#eaffff',w:1.6}); }
+    for(let i=sparks.length-1;i>=0;i--){ const s=sparks[i]; s.t+=s.sp*dt; if(s.t>=1){sparks.splice(i,1);continue;}
+      const q=qp(s,s.t,0); ctx.globalAlpha=.9*(1-s.t*.4); ctx.fillStyle=s.col; ctx.beginPath(); ctx.arc(q.x,q.y,s.w,0,7); ctx.fill(); }
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.font=FONT; ctx.textBaseline='middle';
+    for(const c of clusters){ const lx=c.x+Math.cos(c.ang)*66-28, ly=c.y+Math.sin(c.ang)*54;
+      const wl=ctx.measureText(c.label).width+12;
+      ctx.fillStyle='rgba(3,12,22,.75)'; ctx.strokeStyle=c.col+'88'; ctx.fillRect(lx,ly-8,wl,16); ctx.strokeRect(lx,ly-8,wl,16);
+      ctx.fillStyle=c.col; ctx.fillText(c.label,lx+6,ly+.5); }
+    if(hover&&agentPos[hover]){ const p=agentPos[hover], nmv=(p.name||hover).toUpperCase(), wl=ctx.measureText(nmv).width+12;
+      ctx.fillStyle='rgba(3,12,22,.85)'; ctx.strokeStyle=p.col; ctx.fillRect(p.x+8,p.y-20,wl,16); ctx.strokeRect(p.x+8,p.y-20,wl,16);
+      ctx.fillStyle='#eaffff'; ctx.fillText(nmv,p.x+14,p.y-12); }
+    ctx.restore();
+  }
+  requestAnimationFrame(frame);
+
+  setInterval(()=>{ const el=document.getElementById('nxClock'); if(el) el.textContent=new Date().toLocaleTimeString('en-GB'); },1000);
+
+  let vT=null;
+  window.nxVoiceLine=(text,sticky)=>{ const el=document.getElementById('nxVoice'); if(!el)return;
+    el.textContent=text; el.classList.add('show'); if(vT)clearTimeout(vT);
+    if(!sticky) vT=setTimeout(()=>el.classList.remove('show'),7000); };
+  let recPrev=false;
+  setInterval(()=>{ const r=typeof recording!=='undefined'&&recording;
+    if(r&&!recPrev) nxVoiceLine('● listening…',true);
+    if(!r&&recPrev){ const el=document.getElementById('nxVoice'); if(el&&el.textContent==='● listening…')el.classList.remove('show'); }
+    recPrev=r; },300);
+  setInterval(()=>{ const el=document.getElementById('nxBL'); if(el){ const w=typeof wakeOn!=='undefined'&&wakeOn;
+    el.textContent=w?'ASR // LISTENING FOR "HEY NEXUS"':'ASR // MIC IDLE — TAP "HEY NEXUS" TO ARM';
+    el.style.opacity=w?'1':'.45'; } },1500);
+
+  // Control-status sidebar, fed by every state render.
+  let seenState=false;
+  const esc2=x=>String(x).replace(/[<>&]/g,'');
+  window.nxState=(s)=>{ const side=document.getElementById('nxSide'); if(!side||!s)return;
+    const by={}; (s.agents||[]).forEach(a=>{ if(a.id!=='chief-of-staff') by[a.department]=(by[a.department]||0)+1; });
+    let h='<div class="sh">NEURALINE // CONTROL STATUS</div>';
+    Object.keys(by).forEach(d=>{ h+='<div class="sr"><span>'+esc2(DLBL[d]||d.toUpperCase())+'</span><b class="'+(s.killed?'dead':'')+'">'+(s.killed?'HALTED':'LIVE')+'</b></div>'; });
+    h+='<div class="sr"><span>BRAIN</span><b class="warn">'+esc2(String(s.brain||'').toUpperCase().slice(0,14))+'</b></div>';
+    h+='<div class="sr"><span>MEMORY</span><b>'+((s.memoryCount|0))+' REC</b></div>';
+    h+='<div class="sr"><span>VAULT</span><b>AES-256</b></div>';
+    h+='<div class="sr"><span>GOOGLE</span><b class="'+(s.google&&s.google.connected?'':'warn')+'">'+(s.google&&s.google.connected?'LINKED':'OFF')+'</b></div>';
+    h+='<div class="sr"><span>UPLINK</span><b>LOCAL ONLY</b></div>';
+    side.innerHTML=h;
+    const lk=document.getElementById('nxLink'); if(lk) lk.textContent='NEURALINE '+(s.killed?'HALTED':'ONLINE')+' — '+((s.agents||[]).length)+' AGENTS CONNECTED';
+    if(!seenState){ seenState=true; setTimeout(()=>{ try{nxShowCards();}catch{} },2600); } };
+
+  // Floating briefing cards (like the video's LAST 7 DAYS / LEAD GEN panels).
+  let cardT=null;
+  window.nxShowCards=async()=>{ try{
+    const [b,j,f]=await Promise.all([
+      fetch('/api/brief').then(r=>r.json()).catch(()=>null),
+      fetch('/api/jobs').then(r=>r.json()).catch(()=>null),
+      fetch('/api/finance').then(r=>r.json()).catch(()=>null)]);
+    const L=document.getElementById('nxCardsL'), R=document.getElementById('nxCardsR'), P=document.getElementById('nxPill');
+    if(!L||!R||!b)return;
+    const rows=o=>o.map(kv=>'<div class="cr"><span>'+esc2(kv[0])+'</span><b>'+esc2(kv[1])+'</b></div>').join('');
+    const inr2=n=>'₹'+Math.round(Math.abs(n||0)).toLocaleString('en-IN');
+    L.innerHTML='<div class="nx-card"><div class="ch">TODAY // BRIEF</div>'+rows([['DUE TODAY',(b.remindersDueToday||[]).length],['MEMORIES',b.memoryCount|0],['GOOGLE',b.googleConnected?'LINKED':'OFF']])+'</div>'
+      +(f&&f.hasData?'<div class="nx-card"><div class="ch">FINANCE // '+esc2(f.scope==='all'?'ALL TIME':f.scope)+'</div>'+rows([['IN',inr2(f.totalIn)],['OUT',inr2(f.totalOut)],['NET',inr2(f.net)]])+'</div>':'');
+    const counts=(j&&j.counts)||{};
+    R.innerHTML=(j&&j.total)?('<div class="nx-card"><div class="ch">PIPELINE // JOB HUNT</div>'+rows(Object.keys(counts).map(k=>[k.toUpperCase(),counts[k]]).concat([['TOTAL',j.total]]))+'</div>'):'';
+    requestAnimationFrame(()=>{ document.querySelectorAll('.nx-card').forEach((c,i)=>setTimeout(()=>c.classList.add('show'),i*160)); });
+    if(P)P.classList.add('show');
+    if(cardT)clearTimeout(cardT);
+    cardT=setTimeout(()=>{ document.querySelectorAll('.nx-card').forEach(c=>c.classList.remove('show')); if(P)P.classList.remove('show');
+      setTimeout(()=>{L.innerHTML='';R.innerHTML='';},600); },18000);
+  }catch{} };
+
+  // ── Wire into the app by wrapping its global functions (declarations are reassignable). ──
+  try{ const f=setActive; setActive=(id,on)=>{ f(id,on); try{nxPulse(id,on);}catch{} }; }catch{}
+  try{ const f=clearActive; clearActive=()=>{ f(); for(const k in act)act[k]=0; }; }catch{}
+  try{ const f=arc; arc=(a,b)=>{ try{nxSpark(a,b);}catch{} return f(a,b); }; }catch{}
+  try{ const f=speak; speak=(tx,cb)=>{ try{nxVoiceLine('◈ '+String(tx).slice(0,120));}catch{} return f(tx,cb); }; }catch{}
+  try{ const f=send; send=(text)=>{ try{ const m=String(text??input.value).trim();
+      if(m) nxVoiceLine('“'+m.slice(0,110)+'”');
+      if(/\b(brief|recap|summar|status|update me|morning|evening)\b/i.test(m)) setTimeout(()=>{try{nxShowCards();}catch{}},600);
+    }catch{} return f(text); }; }catch{}
+  try{ const f=renderOrg; renderOrg=(agents)=>{ f(agents); try{nxBuild(agents);}catch{} }; }catch{}
+  try{ const f=renderState; renderState=(s)=>{ f(s); try{nxState(s);}catch{} }; }catch{}
+
+  // ── DEEP SPACE — full-page backdrop (twinkling stars, drifting nebulae, meteors) ──
+  (()=>{
+    const c=document.getElementById('bgfx'); if(!c)return; const g=c.getContext('2d');
+    let W2=0,H2=0; const fit2=()=>{ W2=c.width=innerWidth; H2=c.height=innerHeight; };
+    addEventListener('resize',fit2); fit2();
+    const st=[]; for(let i=0;i<160;i++) st.push({x:Math.random(),y:Math.random(),r:Math.random()*1.2+.3,ph:Math.random()*9,sp:.4+Math.random()*.9});
+    const neb=[{h:'rgba(16,70,140,',r:.5,x:.2,y:.78,ph:0},{h:'rgba(64,22,128,',r:.42,x:.82,y:.22,ph:2.1},{h:'rgba(10,96,120,',r:.46,x:.56,y:.5,ph:4.2}];
+    let met=null,nextMet=performance.now()+7000;
+    (function fr(now){
+      requestAnimationFrame(fr); if(document.hidden||!W2)return; const t=(now||0)/1000;
+      g.clearRect(0,0,W2,H2);
+      for(const n of neb){ const x=(n.x+Math.sin(t*.05+n.ph)*.05)*W2, y=(n.y+Math.cos(t*.04+n.ph)*.04)*H2, R2=Math.min(W2,H2)*n.r;
+        const gr=g.createRadialGradient(x,y,0,x,y,R2); gr.addColorStop(0,n.h+'0.085)'); gr.addColorStop(1,n.h+'0)');
+        g.fillStyle=gr; g.fillRect(0,0,W2,H2); }
+      g.fillStyle='#bfe9ff';
+      for(const s of st){ g.globalAlpha=(.1+.5*Math.abs(Math.sin(t*s.sp+s.ph)))*.55; g.fillRect(s.x*W2,s.y*H2,s.r,s.r); }
+      g.globalAlpha=1;
+      if(!met&&now>nextMet) met={x:W2*.1+Math.random()*W2*.8,y:Math.random()*H2*.3,vx:(Math.random()<.5?-1:1)*(3+Math.random()*3),vy:2+Math.random()*2,life:1};
+      if(met){ met.x+=met.vx*3; met.y+=met.vy*3; met.life-=.02;
+        g.strokeStyle='rgba(190,240,255,'+(met.life*.7).toFixed(3)+')'; g.lineWidth=1.4;
+        g.beginPath(); g.moveTo(met.x,met.y); g.lineTo(met.x-met.vx*10,met.y-met.vy*10); g.stroke();
+        if(met.life<=0){ met=null; nextMet=now+5000+Math.random()*9000; } }
+    })(performance.now());
+  })();
+
+  // ── HOLO-TOASTS — say or do something, and it materializes on screen ──
+  const toastBox=document.getElementById('toasts'); const tThr={};
+  window.nxToast=(o)=>{ if(!toastBox)return;
+    const k=o.key||o.title, nw=Date.now(); if(tThr[k]&&nw-tThr[k]<(o.throttle||3000))return; tThr[k]=nw;
+    const d=document.createElement('div'); d.className='htoast'; d.style.borderColor=o.col||'#1ce6ff';
+    d.innerHTML='<span class="ti" style="color:'+(o.col||'#1ce6ff')+'">'+(o.icon||'◈')+'</span><span class="tt"><b>'+esc2(o.title||'')+'</b>'+(o.sub?'<i>'+esc2(o.sub)+'</i>':'')+'</span>';
+    toastBox.appendChild(d); while(toastBox.children.length>4)toastBox.firstChild.remove();
+    setTimeout(()=>{ d.classList.add('out'); setTimeout(()=>d.remove(),450); }, o.ms||4200); };
+  window.nxRipple=()=>{ const r=document.createElement('div'); r.className='nxripple'; document.body.appendChild(r); setTimeout(()=>r.remove(),1100); };
+
+  // Events → animations: agents engaging, hand-offs, reminders, approvals, vault writes, mic.
+  try{ const f=setActive; setActive=(id,on)=>{ f(id,on);
+    if(on&&id!=='chief-of-staff'){ const p=agentPos[id];
+      nxToast({key:'ag:'+id, icon:'◉', title:((p&&p.name)||id).toUpperCase()+' ENGAGED', col:(p&&p.col)||'#1ce6ff', ms:2600, throttle:4000}); } }; }catch{}
+  try{ const f=addA2A; addA2A=(a,b,m)=>{ const NM=x=>{try{return nm(x);}catch{return x;}};
+    nxToast({key:'a2a', icon:'⇄', title:'AGENT HANDOFF', sub:NM(a)+' → '+NM(b), col:'#b98cff', ms:2600, throttle:2500}); return f(a,b,m); }; }catch{}
+  try{ const f=addApproval; addApproval=(a)=>{ nxToast({icon:'⚠', title:'APPROVAL REQUIRED', sub:String(a&&a.agent||'')+' · '+String(a&&a.tool||''), col:'#ff5d7e', ms:6500}); return f(a); }; }catch{}
+  try{ const f=addProg; addProg=(t)=>{ try{ const s=String(t);
+      if(s.startsWith('⏰')) nxToast({icon:'⏰', title:'REMINDER', sub:s.replace(/^⏰\s*Reminder:\s*/,'').slice(0,64), col:'#ffb84d', ms:7000});
+    }catch{} return f(t); }; }catch{}
+  try{ const f=uploadFile; uploadFile=(file)=>{ nxToast({icon:'🔒', title:'ENCRYPTING → VAULT', sub:String((file&&file.name)||'').slice(0,44), col:'#58f6a2', ms:3200}); return f(file); }; }catch{}
+  try{ const f=startRecording; startRecording=(...a)=>{ try{nxRipple();}catch{} return f(...a); }; }catch{}
+})();
 </script>
 </body>
 </html>

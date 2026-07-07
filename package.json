@@ -13,6 +13,7 @@
     "telegram": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./src/surfaces/telegram.ts",
     "web": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./src/surfaces/web.ts",
     "user": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./scripts/user.ts",
+    "rekey": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./scripts/rekey.ts",
     "smoke": "node --experimental-sqlite --import tsx ./scripts/smoke.ts",
     "authtest": "node --experimental-sqlite --env-file-if-exists=.env --import tsx ./scripts/authtest.ts",
     "livetest": "node --experimental-sqlite --import tsx ./scripts/livetest.ts",
@@ -20,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "three": "^0.185.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

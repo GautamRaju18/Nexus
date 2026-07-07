@@ -272,6 +272,10 @@ export class Orchestrator {
     if (/\b(research|look up|search for|latest|news|headlines|stories|competitors?|find out|what'?s happening|price of|how much (is|does))\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "research", task: outcome }] };
 
+    // Codebase / own-project questions → developer agent (local code tools).
+    if (/\b(codebase|repo(sitor(y|ies))?|scan (my|the|this) (project|folder|app|code)|my (saas|app|project|code)\b.{0,30}\b(workflow|route|api|schema|architecture|structure)|workflows? (in|inside|of) (my|the)|map (the )?(workflows?|architecture)|code_?review|in my code)\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "developer", task: outcome }] };
+
     // Jobs / applications → job application agent.
     if (/\b(apply|applying|application|cover letter|tailor.{0,14}(resume|résumé|cv)|job (posting|listing|opening|hunt|application|search)|find.{0,15}jobs?|my (resume|résumé|cv))\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "jobs", task: outcome }] };

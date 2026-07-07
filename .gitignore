@@ -8,10 +8,16 @@ data/
 *.db-wal
 *.db-shm
 
-# Secrets
+# Secrets — never commit anything that holds keys.
 .env
-.env.local
+.env.*
+!.env.example
+*.env
 *.key
+# A bare "env" (no dot) slips past ".env"; ignore stray variants too.
+/env
+env.txt
+env.bak
 
 # Build / editor
 dist/

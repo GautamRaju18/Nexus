@@ -57,6 +57,46 @@ export class Vault {
     );
   }
 
+  /**
+   * Rotate the master passphrase. Re-encrypts EVERY stored secret (and the check value)
+   * under `newPassphrase`, then switches this live instance to it. Must be called on a
+   * vault already unlocked with the current passphrase. Atomic: the whole re-encryption
+   * runs in one transaction, so a crash can't leave the vault half old-key / half new-key.
+   * Returns the number of secrets re-encrypted.
+   */
+  rekey(newPassphrase: string): number {
+    if (!newPassphrase || newPassphrase.length < 8) {
+      throw new Error("the new master key must be at least 8 characters");
+    }
+    // Refuse unless we can actually read the vault with the CURRENT passphrase — otherwise
+    // we'd "rotate" garbage and permanently lose the real secrets.
+    const check = this.raw(CHECK_KEY);
+    if (check !== null) {
+      const dec = decrypt(check, this.passphrase); // throws if the current key is wrong
+      if (dec !== CHECK_PLAINTEXT && dec !== LEGACY_CHECK_PLAINTEXT) {
+        throw new Error("vault is not unlocked with the current passphrase — refusing to rekey");
+      }
+    }
+    const keys = this.list();
+    // Decrypt-then-reencrypt everything up front (in memory) so a bad decrypt aborts
+    // BEFORE we write anything.
+    const reencrypted = keys.map((key) => {
+      const enc = this.raw(key);
+      return { key, value: enc === null ? null : encrypt(decrypt(enc, this.passphrase), newPassphrase) };
+    });
+    this.db.exec("BEGIN");
+    try {
+      for (const { key, value } of reencrypted) if (value !== null) this.setRaw(key, value);
+      this.setRaw(CHECK_KEY, encrypt(CHECK_PLAINTEXT, newPassphrase));
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+    this.passphrase = newPassphrase;
+    return keys.length;
+  }
+
   set(key: string, value: string): void {
     this.setRaw(key, encrypt(value, this.passphrase));
   }

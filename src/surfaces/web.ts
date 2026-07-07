@@ -17,6 +17,7 @@ import { dirname, join } from "node:path";
 import { exec } from "node:child_process";
 import { bootstrap } from "../core/bootstrap";
 import { FileStore } from "../core/filestore";
+import { extractText } from "../core/textextract";
 import { AGENTS, AGENTS_BY_ID } from "../agents/specs";
 import { AutonomyLevel, type ApprovalRequest, type Approver, type LLMMessage } from "../types";
 
@@ -193,6 +194,46 @@ async function main(): Promise<void> {
     })),
   });
 
+  // A deterministic morning/evening brief from local data only — instant, free, private.
+  const brief = (userId: string) => {
+    const now = new Date();
+    const hr = now.getHours();
+    const partOfDay = hr < 12 ? "morning" : hr < 17 ? "afternoon" : "evening";
+    const s = rt.scope(userId);
+    // Reminders due today / overdue
+    const rem = rt.reminders.list({ status: "pending", limit: 100, userId });
+    const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
+    const dueToday = rem.filter((r) => r.dueAt <= endOfDay.getTime()).sort((a, b) => a.dueAt - b.dueAt);
+    // Jobs pipeline
+    let jobCounts: Record<string, number> = {};
+    let jobTotal = 0;
+    try {
+      const apps = JSON.parse(s.vault.get("job_applications") || "[]");
+      if (Array.isArray(apps)) { jobTotal = apps.length; for (const a of apps) jobCounts[a.status] = (jobCounts[a.status] ?? 0) + 1; }
+    } catch { /* none */ }
+    // Finance: this month's net
+    let financeMonth: { in: number; out: number; net: number } | null = null;
+    try {
+      const txns = JSON.parse(s.vault.get("finance_transactions") || "[]");
+      if (Array.isArray(txns) && txns.length) {
+        const ym = now.toISOString().slice(0, 7);
+        let inc = 0, out = 0;
+        for (const t of txns) if (String(t.date).slice(0, 7) === ym) { if (t.amount >= 0) inc += t.amount; else out += -t.amount; }
+        financeMonth = { in: Math.round(inc), out: Math.round(out), net: Math.round(inc - out) };
+      }
+    } catch { /* none */ }
+    return {
+      partOfDay,
+      greeting: `Good ${partOfDay}, Sir.`,
+      time: now.toISOString(),
+      remindersDueToday: dueToday.map((r) => ({ id: r.id, text: r.text, dueAt: r.dueAt, overdue: r.dueAt <= now.getTime() })),
+      memoryCount: rt.memory.count(userId),
+      jobs: { total: jobTotal, counts: jobCounts },
+      financeMonth,
+      googleConnected: rt.google.isConnected(),
+    };
+  };
+
   const server = createServer(async (req, res) => {
     // Defense-in-depth: bound to loopback, but also refuse non-local sockets and foreign Hosts.
     if (!isLoopback(req)) {
@@ -219,6 +260,24 @@ async function main(): Promise<void> {
         // no-store so a UI update is never masked by a stale cached page.
         res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
         return res.end(html);
+      }
+
+      // Locally-vendored frontend libs (e.g. Three.js) — no CDN, works fully offline.
+      // Name-only allowlist (no separators) so this can never traverse the filesystem.
+      if (method === "GET" && path.startsWith("/vendor/")) {
+        const name = path.slice("/vendor/".length);
+        if (!/^[\w.-]+\.(js|mjs)$/.test(name)) {
+          res.writeHead(404);
+          return res.end("not found");
+        }
+        try {
+          const body = await readFile(join(HERE, "..", "..", "public", "vendor", name));
+          res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400" });
+          return res.end(body);
+        } catch {
+          res.writeHead(404);
+          return res.end("not found");
+        }
       }
 
       // ── Auth (login is the only public API; accounts are pre-seeded via the user CLI) ──
@@ -334,6 +393,85 @@ async function main(): Promise<void> {
         }
       }
 
+      // ── Reminders (the scheduler already fires due ones over SSE) ──
+      if (method === "GET" && path === "/api/reminders") {
+        const all = rt.reminders.list({ status: "all", limit: 100, userId });
+        const now = Date.now();
+        const pending = all.filter((r) => r.status === "pending").sort((a, b) => a.dueAt - b.dueAt);
+        return json(res, 200, {
+          reminders: pending.map((r) => ({ id: r.id, text: r.text, dueAt: r.dueAt, recurrence: r.recurrence, overdue: r.dueAt <= now })),
+          recentFired: all.filter((r) => r.status === "fired").sort((a, b) => (b.firedAt ?? 0) - (a.firedAt ?? 0)).slice(0, 5).map((r) => ({ id: r.id, text: r.text, firedAt: r.firedAt })),
+        });
+      }
+      if (method === "POST" && path === "/api/reminders") {
+        const b = await readJson(req).catch(() => ({}));
+        const text = String(b.text ?? "").trim();
+        if (!text) return json(res, 400, { error: "what should I remind you about?" });
+        let dueAt = 0;
+        if (typeof b.inMinutes === "number" && b.inMinutes > 0) dueAt = Date.now() + b.inMinutes * 60_000;
+        else if (typeof b.at === "string" && !Number.isNaN(Date.parse(b.at))) dueAt = Date.parse(b.at);
+        else return json(res, 400, { error: "provide inMinutes or an ISO time" });
+        const rec = ["hourly", "daily", "weekly"].includes(String(b.recurrence)) ? (b.recurrence as "hourly" | "daily" | "weekly") : null;
+        const r = rt.reminders.add({ text, dueAt, recurrence: rec, agent: "you", userId });
+        return json(res, 200, { ok: true, id: r.id, dueAt: r.dueAt });
+      }
+      if (method === "POST" && path === "/api/reminders/cancel") {
+        const b = await readJson(req).catch(() => ({}));
+        return json(res, 200, { ok: rt.reminders.cancel(String(b.id ?? "")) });
+      }
+
+      // ── Finance dashboard: aggregate the user's encrypted transactions ──
+      if (method === "GET" && path === "/api/finance") {
+        let txns: { date: string; description: string; amount: number; category: string }[] = [];
+        try {
+          const raw = rt.scope(userId).vault.get("finance_transactions");
+          const a = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(a)) txns = a;
+        } catch { /* none */ }
+        const month = (url.searchParams.get("month") || "").trim();
+        const months = [...new Set(txns.map((t) => t.date.slice(0, 7)))].sort().reverse();
+        const scoped = month ? txns.filter((t) => t.date.slice(0, 7) === month) : txns;
+        const round = (n: number) => Math.round(n * 100) / 100;
+        let totalIn = 0, totalOut = 0;
+        const byCat: Record<string, number> = {};
+        const byMonth: Record<string, { in: number; out: number }> = {};
+        for (const t of scoped) {
+          if (t.amount >= 0) totalIn += t.amount;
+          else { totalOut += -t.amount; byCat[t.category] = (byCat[t.category] ?? 0) + -t.amount; }
+        }
+        for (const t of txns) {
+          const m = t.date.slice(0, 7);
+          byMonth[m] = byMonth[m] ?? { in: 0, out: 0 };
+          if (t.amount >= 0) byMonth[m]!.in += t.amount; else byMonth[m]!.out += -t.amount;
+        }
+        return json(res, 200, {
+          hasData: txns.length > 0,
+          scope: month || "all",
+          months,
+          totalIn: round(totalIn), totalOut: round(totalOut), net: round(totalIn - totalOut),
+          count: scoped.length,
+          spendByCategory: Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([category, spent]) => ({ category, spent: round(spent) })),
+          trend: Object.entries(byMonth).sort((a, b) => a[0].localeCompare(b[0])).slice(-6).map(([m, v]) => ({ month: m, in: round(v.in), out: round(v.out) })),
+          recent: [...scoped].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12),
+        });
+      }
+
+      // ── Job pipeline board ──
+      if (method === "GET" && path === "/api/jobs") {
+        let apps: { company: string; role: string; status: string; url?: string; notes?: string; updated: string }[] = [];
+        try {
+          const raw = rt.scope(userId).vault.get("job_applications");
+          const a = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(a)) apps = a;
+        } catch { /* none */ }
+        const counts: Record<string, number> = {};
+        for (const a of apps) counts[a.status] = (counts[a.status] ?? 0) + 1;
+        return json(res, 200, { applications: apps, counts, total: apps.length });
+      }
+
+      // ── Proactive brief: a fast, deterministic snapshot from local data (no LLM, ₹0) ──
+      if (method === "GET" && path === "/api/brief") return json(res, 200, brief(userId));
+
       // ── Encrypted local file store (isolated per user) ──
       const files = filesFor(userId);
       if (method === "GET" && path === "/api/files") return json(res, 200, { files: files.list() });
@@ -374,7 +512,27 @@ async function main(): Promise<void> {
       if (method === "POST" && path === "/api/chat") {
         const body = await readJson(req);
         const message = String(body.message ?? "").trim();
-        if (!message) return json(res, 400, { error: "empty message" });
+        // Attachments: file ids the user added via the chat "+" button. Their TEXT is
+        // extracted locally and fed to the agent inline, so any agent can use them even
+        // without the file_read tool. Images carry no text (no vision in v1) — noted as such.
+        const attachIds = Array.isArray(body.attachments) ? body.attachments.map((x: unknown) => String(x)).slice(0, 8) : [];
+        let attachBlock = "";
+        if (attachIds.length) {
+          const store = filesFor(userId);
+          const parts: string[] = [];
+          for (const id of attachIds) {
+            const f = store.get(id);
+            if (!f) continue;
+            const ex = extractText(f.data, f.meta.name, f.meta.type);
+            if (ex.quality === "none") parts.push(`### ${f.meta.name}\n[${f.meta.type || "file"} — no readable text${/^image\//.test(f.meta.type) ? " (image; I can't see image contents yet)" : ""}.]`);
+            else parts.push(`### ${f.meta.name}\n${ex.text.slice(0, 18000)}`);
+          }
+          if (parts.length) attachBlock = `\n\n--- ATTACHED FILES (provided by the CEO; use their real contents) ---\n${parts.join("\n\n")}`;
+        }
+        if (!message && !attachBlock) return json(res, 400, { error: "empty message" });
+        // What the model sees includes the attachment text; what we persist stays clean.
+        const llmMessage = (message || "Please review the attached file(s).") + attachBlock;
+        const persistMessage = message || "📎 (sent attachment)";
         // Optional targeting: a single agent (direct line) or a list (wired circuit).
         const agentId = typeof body.agentId === "string" ? body.agentId : undefined;
         const agents = Array.isArray(body.agents) ? body.agents.map((x: unknown) => String(x)) : undefined;
@@ -394,25 +552,25 @@ async function main(): Promise<void> {
         };
         // Persist to a SPECIFIC main conversation; create one if the id is missing/not theirs.
         const saveMain = (agent?: string) => {
-          if (!conversationId || !rt.conversations.appendTo(conversationId, userId, message, answer, agent)) {
+          if (!conversationId || !rt.conversations.appendTo(conversationId, userId, persistMessage, answer, agent)) {
             conversationId = rt.conversations.createConversation(userId).id;
-            rt.conversations.appendTo(conversationId, userId, message, answer, agent);
+            rt.conversations.appendTo(conversationId, userId, persistMessage, answer, agent);
           }
         };
         // Serialize chats so two overlapping requests can't interleave persisted turns.
         await (chatQueue = chatQueue
           .then(async () => {
             if (agents && agents.length >= 2) {
-              answer = await orch.runWired(agents, message, cb); // turns surface live via onTurn
+              answer = await orch.runWired(agents, llmMessage, cb); // turns surface live via onTurn
               saveMain();
             } else if (agentId) {
               const scope = `direct:${agentId}`;
               const h = rt.conversations.recent(userId, scope, 8);
-              answer = await orch.runDirect(agentId, message, { history: h, ...cb });
-              rt.conversations.appendTurn(userId, scope, message, answer, agentId);
+              answer = await orch.runDirect(agentId, llmMessage, { history: h, ...cb });
+              rt.conversations.appendTurn(userId, scope, persistMessage, answer, agentId);
             } else {
               const h = conversationId ? rt.conversations.recentOf(conversationId, userId, 8) : [];
-              answer = await orch.handle(message, { history: h, ...cb });
+              answer = await orch.handle(llmMessage, { history: h, ...cb });
               saveMain();
             }
           })

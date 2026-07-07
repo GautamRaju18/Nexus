@@ -16,6 +16,9 @@ import { googleTools } from "./tools-google";
 import { jobTools } from "./tools-jobs";
 import { reminderTools } from "./tools-reminders";
 import { financeTools } from "./tools-finance";
+import { docTools } from "./tools-docs";
+import { fileTools } from "./tools-files";
+import { codeTools } from "./tools-code";
 import { ReminderStore } from "./reminders";
 import { Scheduler, type Deliver } from "./scheduler";
 import { GoogleAuth } from "./google/auth";
@@ -81,6 +84,9 @@ export function bootstrap(log: (msg: string) => void = () => {}): NexusRuntime {
   for (const t of jobTools()) tools.register(t);
   for (const t of reminderTools()) tools.register(t);
   for (const t of financeTools()) tools.register(t);
+  for (const t of docTools()) tools.register(t);
+  for (const t of fileTools()) tools.register(t);
+  for (const t of codeTools()) tools.register(t);
 
   /**
    * Per-tenant service bundle. memory/reminders inject the userId; vault/kv get a

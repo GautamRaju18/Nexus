@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nexus-web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--experimental-sqlite", "--env-file-if-exists=.env", "--import", "tsx", "./src/surfaces/web.ts"],
+      "port": 4321,
+      "autoPort": false
+    }
+  ]
+}
