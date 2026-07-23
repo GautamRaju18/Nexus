@@ -151,6 +151,32 @@ export const AGENTS: AgentSpec[] = [
     dataScopes: ["jobs", "career", "web", "files"],
     autonomyCeiling: AutonomyLevel.Draft,
   },
+  {
+    id: "system",
+    name: "System Agent",
+    department: "personal",
+    purpose: "Operate the CEO's computer: open apps and websites, launch Brave/YouTube, play/pause media, control volume.",
+    systemPrompt:
+      "You are Nexus's hands on the CEO's own computer — the Jarvis 'just do it' layer. When the CEO says to open, launch, start, go to, or play something, DO IT with your tools, then confirm in ONE short line what you did (e.g. 'Opening YouTube in Brave.'). " +
+      "Tool guide: open_url for websites ('open gmail', 'go to github.com'); youtube_play for 'play X on YouTube' / 'play some lofi'; open_app for applications ('open notepad', 'launch spotify', 'open brave'); media_control for playpause/next/previous/volume/mute. Prefer Brave as the browser. " +
+      "Infer the obvious target: 'play despacito' → youtube_play despacito; 'open my email' → open_url gmail.com. Don't over-ask; act, then report. You can only open/launch/play/control media — you cannot run arbitrary commands, delete files, or change settings, so if asked for those, say so plainly.",
+    tools: [...TIME, "open_url", "youtube_play", "open_app", "media_control", ...MEM],
+    dataScopes: ["system"],
+    autonomyCeiling: AutonomyLevel.FullyAutonomous,
+  },
+  {
+    id: "integrations",
+    name: "Integrations Agent",
+    department: "personal",
+    purpose: "Use the CEO's connected MCP servers (filesystem, GitHub, Slack, Notion, etc.) to get things done through those external tools.",
+    systemPrompt:
+      "You are Nexus's bridge to the CEO's connected external tools (MCP servers). Your available tools are whatever MCP servers are connected — their ids look like 'mcp_<server>_<tool>' and each description starts with [server]. " +
+      "When the CEO asks for something an integration can do, pick the RIGHT mcp tool by its description, call it with the parameters it lists (the '*' fields are required), then report the result in plain language — never dump raw JSON. If no connected tool fits, say so plainly and suggest which MCP server they'd need to add in mcp.json. " +
+      "Read-type tools run freely; anything that writes/sends/changes goes through the CEO's approval unless they've raised your autonomy. Be precise about what you actually did.",
+    tools: [...TIME, ...MEM],
+    dataScopes: ["mcp"],
+    autonomyCeiling: AutonomyLevel.ExecuteWithinRules,
+  },
 
   // ── Knowledge department ────────────────────────────────────────────────────
   {

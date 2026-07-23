@@ -158,7 +158,11 @@ function originOk(req: IncomingMessage): boolean {
 }
 
 async function main(): Promise<void> {
-  const rt = bootstrap(() => {});
+  const rt = bootstrap((m) => console.log(m));
+  // Connect MCP servers in the background so their tools come online without blocking startup.
+  rt.connectMcp()
+    .then((ids) => { if (ids.length) console.log(`MCP: ${ids.length} tool(s) online across ${rt.mcp.status.filter((s) => s.ok).length} server(s)`); })
+    .catch((e) => console.log(`MCP connect error: ${(e as Error).message}`));
   const sse = new SseHub();
   const approver = new WebApprover(sse);
   const orch = rt.buildOrchestrator(approver);
@@ -184,6 +188,7 @@ async function main(): Promise<void> {
     killed: rt.policy.isKilled(),
     memoryCount: rt.memory.count(userId),
     google: { configured: rt.google.isConfigured(), connected: rt.google.isConnected() },
+    mcp: { servers: rt.mcp.status.filter((s) => s.ok).length, tools: rt.mcp.toolIds.length },
     agents: AGENTS.map((a) => ({
       id: a.id,
       name: a.name,
@@ -467,6 +472,15 @@ async function main(): Promise<void> {
         const counts: Record<string, number> = {};
         for (const a of apps) counts[a.status] = (counts[a.status] ?? 0) + 1;
         return json(res, 200, { applications: apps, counts, total: apps.length });
+      }
+
+      // ── MCP: which external servers are connected and how many tools each exposes ──
+      if (method === "GET" && path === "/api/mcp") {
+        return json(res, 200, {
+          servers: rt.mcp.status,
+          totalTools: rt.mcp.toolIds.length,
+          connected: rt.mcp.status.filter((s) => s.ok).length,
+        });
       }
 
       // ── Proactive brief: a fast, deterministic snapshot from local data (no LLM, ₹0) ──

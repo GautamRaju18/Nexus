@@ -19,6 +19,9 @@ data/
 env.txt
 env.bak
 
+# MCP server config — may hold tokens; keep local (mcp.example.json is the template).
+mcp.json
+
 # Build / editor
 dist/
 .DS_Store

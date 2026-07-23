@@ -248,6 +248,18 @@ export class Orchestrator {
     if (body === "") return { mode: "chat" }; // the message was ONLY a greeting
     const t = body.toLowerCase();
 
+    // Machine control → system agent (open apps/URLs, YouTube, media). Check early so
+    // "open/launch/play/go to" reliably reaches the hands that can act.
+    if (/\b(open|launch|start|fire up|go to|pull up|play|pause|resume|skip|next track|previous track|mute|unmute|volume|turn (it )?(up|down))\b/.test(t) &&
+        /\b(browser|brave|chrome|edge|firefox|youtube|yt|spotify|notepad|calculator|calc|explorer|settings|vscode|vs code|code|app|website|site|\.com|\.io|\.org|song|music|video|track|tab|gmail|maps|google)\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "system", task: outcome }] };
+    if (/^(play|pause|resume|mute|unmute|next track|previous track|skip( song| video)?|volume (up|down))\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "system", task: outcome }] };
+
+    // Connected external tools (MCP servers) → integrations agent.
+    if (/\b(mcp|integration|connected (tool|server|app)|via (github|slack|notion|linear|jira|filesystem|drive)|use my (github|slack|notion|linear|jira|drive|filesystem))\b/.test(t))
+      return { mode: "delegate", plan: [{ agent: "integrations", task: outcome }] };
+
     // Memory writes → secretary (has the remember tool).
     if (/^(remember|note that|keep in mind|don'?t forget|save this)\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "secretary", task: outcome }] };
@@ -273,11 +285,11 @@ export class Orchestrator {
       return { mode: "delegate", plan: [{ agent: "research", task: outcome }] };
 
     // Codebase / own-project questions → developer agent (local code tools).
-    if (/\b(codebase|repo(sitor(y|ies))?|scan (my|the|this) (project|folder|app|code)|my (saas|app|project|code)\b.{0,30}\b(workflow|route|api|schema|architecture|structure)|workflows? (in|inside|of) (my|the)|map (the )?(workflows?|architecture)|code_?review|in my code)\b/.test(t))
+    if (/\b(codebase|repo(sitor(y|ies))?|scan (my|the|this)|my (code )?projects?|registered projects?|list.{0,12}projects?|my (saas|app|project|code)\b.{0,30}\b(workflow|route|api|schema|architecture|structure)|workflows? (in|inside|of) (my|the)|map (the )?(workflows?|architecture)|code_?review|in my code)\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "developer", task: outcome }] };
 
     // Jobs / applications → job application agent.
-    if (/\b(apply|applying|application|cover letter|tailor.{0,14}(resume|résumé|cv)|job (posting|listing|opening|hunt|application|search)|find.{0,15}jobs?|my (resume|résumé|cv))\b/.test(t))
+    if (/\b(apply|applying|job applications?|applications? (tracker|pipeline)|my applications|cover letter|tailor.{0,14}(resume|résumé|cv)|job (posting|listing|opening|hunt|search)|find.{0,15}jobs?|track.{0,18}(job|application)|my (resume|résumé|cv))\b/.test(t))
       return { mode: "delegate", plan: [{ agent: "jobs", task: outcome }] };
 
     // Email → email agent (Gmail tools).
@@ -309,13 +321,24 @@ export class Orchestrator {
         content:
           "You are the Chief of Staff. Decide how to handle the CEO's latest message. DEFAULT to \"chat\".\n" +
           "- Use \"chat\" for anything you can answer in prose: small talk, questions, advice, explanations, planning, and DRAFTS (emails, posts, JDs). This is the common case.\n" +
-          "- Use \"delegate\" ONLY when the task needs a live tool: web research/news, weather, the CEO's Gmail, the CEO's Calendar, or storing/recalling memory. Then pick 1 agent.\n" +
+          "- Use \"delegate\" ONLY when the task needs a live tool or a specialist's data. Then pick 1 agent.\n" +
           "- The message may be a SHORT REPLY to your previous question (use the conversation). E.g. if you asked which city and they reply 'Goa', delegate the weather task for Goa.\n\n" +
-          "Delegate targets: research (web/news), secretary (weather, reminders/nudges, remember/recall), email (Gmail: triage/read/draft/send), calendar (Google Calendar: list/create/reschedule), finance (spend tracking from imported bank CSVs: summary/transactions).\n\n" +
+          "Delegate targets:\n" +
+          "- research: web/news/live lookups\n" +
+          "- secretary: weather, reminders/nudges, remember/recall\n" +
+          "- email: the CEO's Gmail (triage/read/draft/send)\n" +
+          "- calendar: Google Calendar (list/create/reschedule)\n" +
+          "- finance: spend tracking from imported bank CSVs (summary/transactions)\n" +
+          "- jobs: job hunt — tracking applications, tailoring résumé/cover letter, the CEO's résumé/CV\n" +
+          "- developer: the CEO's OWN codebase — scan a project, list projects, map routes/workflows, read/search code\n" +
+          "- system: operate the computer — open apps/websites, launch Brave/YouTube, play/pause media, volume\n" +
+          "- integrations: use connected MCP servers (external tools)\n\n" +
           "Respond with ONE JSON object only. Examples:\n" +
           '{"mode":"chat"}   (for: "draft an email", "how do I...", "explain X", "plan my trip")\n' +
           '{"mode":"delegate","plan":[{"agent":"research","task":"find the 3 biggest fintech stories this week and summarize"}]}\n' +
-          '{"mode":"delegate","plan":[{"agent":"secretary","task":"what is the weather in Goa today"}]}',
+          '{"mode":"delegate","plan":[{"agent":"jobs","task":"list my tracked job applications"}]}\n' +
+          '{"mode":"delegate","plan":[{"agent":"developer","task":"list my registered code projects"}]}\n' +
+          '{"mode":"delegate","plan":[{"agent":"system","task":"open youtube in brave"}]}',
       },
       ...history.slice(-6),
       { role: "user", content: outcome },

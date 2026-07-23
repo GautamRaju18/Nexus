@@ -1,0 +1,23 @@
+{
+  "//": "Copy this to mcp.json (gitignored) and add the MCP servers you want Nexus to use.",
+  "//how": "Each server is a command Nexus launches over stdio. Its tools become usable by the Integrations agent automatically. Restart Nexus after editing.",
+  "servers": {
+    "filesystem": {
+      "//": "Gives Nexus read/write access to a folder. Change the last arg to your path.",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "D:\\work"]
+    },
+    "github": {
+      "//": "GitHub repos/issues/PRs. Needs a token in env (kept out of git).",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token_here" },
+      "disabled": true
+    },
+    "memory-graph": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "disabled": true
+    }
+  }
+}
